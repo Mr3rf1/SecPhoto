@@ -1,5 +1,5 @@
 # SecPhoto
-a python tool for save telegram self destructing photo/video
+a python tool to save telegram self destructing photo/video
 
 # Installation
 ## Termux
