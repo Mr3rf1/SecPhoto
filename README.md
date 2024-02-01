@@ -13,9 +13,9 @@ Enter these commands:
 - `python3 SecPhoto.py`
 
 # Usage
-`python3 SecPhoto.py -Sid <chat id>`
+`python3 SecPhoto.py -Sid <chat_id>`
 
-And then go to t.me/SomeId chat and reply a message to destructing Photo
+And then go to t.me/chat_id chat and reply a message to destructing Photo
 
 <!--
 <h1>Installation</h1>
