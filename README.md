@@ -9,7 +9,7 @@ Enter these commands:
 - `pkg install python3 python3-pip git`
 - `git clone https://github.com/e811-py/SecPhoto`
 - `cd SecPhoto`
-- `python3 -m pip install -r requierments.txt`
+- `python3 -m pip install -r requirements.txt`
 - `python3 SecPhoto.py`
 
 # Usage
