@@ -14,6 +14,7 @@ Enter these commands:
 
 # Usage
 `python3 SecPhoto.py -Sid <chat id>`
+
 And then go to t.me/SomeId chat and reply a message to destructing Photo
 
 <!--
