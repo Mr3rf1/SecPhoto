@@ -1,5 +1,4 @@
 # t.me/Mr3rf1
-# t.me/MrSMSBomber
 # Nabinam Ski beri manba nazani
 def main():
     try:
