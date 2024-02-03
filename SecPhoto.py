@@ -33,7 +33,7 @@ def main():
  |____/ \___|\___|_|   |_| |_|\___/ \__\___/
 
       a tool for save telegram {Fore.GREEN}self destructing photo/video{Fore.RESET}
-      github.com/{Fore.BLUE}e811-py                        {Fore.RESET}t.me/{Fore.BLUE}Mr3rf1{Fore.RESET}
+      github.com/{Fore.BLUE}Mr3rf1                        {Fore.RESET}t.me/{Fore.BLUE}Mr3rf1{Fore.RESET}
 
       {Fore.LIGHTMAGENTA_EX}-p{Fore.RESET} or {Fore.LIGHTMAGENTA_EX}--proxy {Fore.LIGHTCYAN_EX}IP:PORT{Fore.RESET} ~> set socks5 proxy (tor)
       example: {Fore.LIGHTMAGENTA_EX}-p {Fore.LIGHTCYAN_EX}127.0.0.1:9050{Fore.RESET}
