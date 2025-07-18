@@ -41,8 +41,8 @@ After creating the application, you'll see:
 1. Open `SecPhoto.py` in a text editor
 2. Find these lines (around line 11-12):
    ```python
-   api_id = 1520270
-   api_hash = "82bd7b4562a5cd24d182bdc39b2d9352"
+   api_id = 1234567
+   api_hash = "82bd7b4562teujin24d18rfayt39b2d9352"
    ```
 3. Replace them with your own credentials:
    ```python
