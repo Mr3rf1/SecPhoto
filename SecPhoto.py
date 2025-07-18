@@ -1,5 +1,5 @@
 # t.me/Mr3rf1
-# Nabinam Ski beri manba nazani
+
 def main():
     try:
         from telethon import TelegramClient, events
@@ -21,9 +21,9 @@ def main():
     if argv.proxy != None:
         ip = argv.proxy.split(':')[0]
         port = int(argv.proxy.split(':')[1])
-        cli = TelegramClient('secret', api_id, api_hash, proxy=(SOCKS5, ip, port))
+        client = TelegramClient('secret', api_id, api_hash, proxy=(SOCKS5, ip, port))
     else:
-        cli = TelegramClient('secret', api_id, api_hash)
+        client = TelegramClient('secret', api_id, api_hash)
     if argv.help:
         print(rf'''  ____            ____  _           _
  / ___|  ___  ___|  _ \| |__   ___ | |_ ___
@@ -54,31 +54,32 @@ def main():
         print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Please see help~> python3 {name[0]} --help')
         exit(0)
     print(f' {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Waiting for reply to a photo...')
-    cli.start()
-    @cli.on(events.NewMessage(chats=id, func=lambda e: e.reply_to != None))
+    client.start()
+    @client.on(events.NewMessage(chats=id, func=lambda e: e.reply_to != None))
     async def run(event):
-        mes = await cli.get_messages(id, ids=event.reply_to_msg_id)
+        mes = await client.get_messages(id, ids=event.reply_to_msg_id)
         # print(mes.media)
         try:
             if mes.media.photo != None:
                 print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Downloading photo...', end='')
-                await cli.download_media(mes.media, 'secret.jpg')
-                await cli.send_file('me', open('secret.jpg', 'rb'))
+                await client.download_media(mes.media, 'secret.jpg')
+                await client.send_file('me', open('secret.jpg', 'rb'))
                 print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret photo sent in your saved messages')
         except AttributeError:
             try:
                 if mes.media.document != None:
                     print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Downloading video...', end='')
-                    await cli.download_media(mes.media, 'secret.mp4')
-                    await cli.send_file('me', open('secret.mp4', 'rb'))
+                    await client.download_media(mes.media, 'secret.mp4')
+                    await client.send_file('me', open('secret.mp4', 'rb'))
                     print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret video sent in your saved messages')
             except AttributeError:
                 if mes.media.video != None:
                     print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Downloading video...', end='')
-                    await cli.download_media(mes.media, 'secret.mp4')
-                    await cli.send_file('me', open('hock.mp4', 'rb'))
+                    await client.download_media(mes.media, 'secret.mp4')
+                    await client.send_file('me', open('hock.mp4', 'rb'))
                     print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret video sent in your saved messages')
-    cli.run_until_disconnected()
+    client.run_until_disconnected()
+
 if '__main__' == __name__:
     try: main()
     except KeyboardInterrupt: print('Bye :)')
