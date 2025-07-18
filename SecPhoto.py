@@ -7,9 +7,12 @@ def main():
         from socks import SOCKS5
         from argparse import ArgumentParser
         from sys import argv as name
-    except: print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Please install dependencies~> {Fore.LIGHTYELLOW_EX}python3 {Fore.LIGHTMAGENTA_EX}-m{Fore.LIGHTYELLOW_EX} pip install {Fore.LIGHTMAGENTA_EX}-r {Fore.LIGHTCYAN_EX}requierments.txt{Fore.RESET}');exit(0)
+    except ImportError:
+        print(' [!] Please install dependencies~> python3 -m pip install -r requirements.txt')
+        exit(0)
+
     api_id = 1234567
-    api_hash = "82bd7b44432f5cd24d165fgc39nh61352"
+    api_hash = "82bd7b4562teujin24d18rfayt39b2d9352"
 
     parser = ArgumentParser(add_help=False)
     parser.add_argument('-p', '--proxy')
@@ -18,7 +21,7 @@ def main():
     parser.add_argument('-help', '--help', action='store_true')
     argv = parser.parse_args()
 
-    if argv.proxy != None:
+    if argv.proxy is not None:
         ip = argv.proxy.split(':')[0]
         port = int(argv.proxy.split(':')[1])
         client = TelegramClient('secret', api_id, api_hash, proxy=(SOCKS5, ip, port))
@@ -43,41 +46,46 @@ def main():
       example2: {Fore.LIGHTYELLOW_EX}python3 {name[0]} {Fore.LIGHTMAGENTA_EX}-Nid {Fore.LIGHTCYAN_EX}12345678{Fore.RESET}
     ''')
         exit(0)
-    if argv.string_id == None and argv.numeric_id == None:
+    if argv.string_id is None and argv.numeric_id is None:
         print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Please see help~> python3 {name[0]} --help')
         exit(0)
-    elif argv.string_id != None and argv.numeric_id == None:
+    elif argv.string_id is not None and argv.numeric_id is None:
         id = argv.string_id
-    elif argv.string_id == None and argv.numeric_id != None:
+    elif argv.string_id is None and argv.numeric_id is not None:
         id = int(argv.numeric_id)
-    elif argv.string_id != None and argv.numeric_id != None:
+    elif argv.string_id is not None and argv.numeric_id is not None:
         print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Please see help~> python3 {name[0]} --help')
         exit(0)
     print(f' {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Waiting for reply to a photo...')
     client.start()
-    @client.on(events.NewMessage(chats=id, func=lambda e: e.reply_to != None))
-    async def run(event):
+
+    @client.on(events.NewMessage(chats=id, func=lambda e: e.reply_to is not None))
+    async def handler(event):
         mes = await client.get_messages(id, ids=event.reply_to_msg_id)
         # print(mes.media)
         try:
-            if mes.media.photo != None:
+            if mes.media.photo is not None:
                 print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Downloading photo...', end='')
                 await client.download_media(mes.media, 'secret.jpg')
-                await client.send_file('me', open('secret.jpg', 'rb'))
+                with open('secret.jpg', 'rb') as file:
+                    await client.send_file('me', file)
                 print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret photo sent in your saved messages')
         except AttributeError:
             try:
-                if mes.media.document != None:
+                if mes.media.document is not None:
                     print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Downloading video...', end='')
                     await client.download_media(mes.media, 'secret.mp4')
-                    await client.send_file('me', open('secret.mp4', 'rb'))
+                    with open('secret.mp4', 'rb') as file:
+                        await client.send_file('me', file)
                     print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret video sent in your saved messages')
             except AttributeError:
-                if mes.media.video != None:
+                if mes.media.video is not None:
                     print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Downloading video...', end='')
                     await client.download_media(mes.media, 'secret.mp4')
-                    await client.send_file('me', open('hock.mp4', 'rb'))
+                    with open('secret.mp4', 'rb') as file:
+                        await client.send_file('me', file)
                     print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret video sent in your saved messages')
+
     client.run_until_disconnected()
 
 if '__main__' == __name__:
