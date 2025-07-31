@@ -1,3 +1,5 @@
 colorama>=0.4.4
 telethon==1.40.0
 pysocks>=1.7.1
+pytz>=2021.1
+jdatetime==5.2.0
