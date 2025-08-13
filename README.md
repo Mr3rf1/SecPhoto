@@ -156,6 +156,9 @@ python3 SecPhoto.py --help
 - ✅ Works with both usernames and numeric IDs
 - ✅ Automatic delivery to Saved Messages
 - ✅ Cross-platform compatibility
+- ✅ Auto-deletion of Database  lock (New)
+- ✅ Duplicate photo detection for current session (New) 
+- ✅ Save Notification to multiple IDs (New)
 
 ## 🛡️ Security Notes
 
@@ -187,3 +190,7 @@ This project is for educational purposes. Please respect Telegram's Terms of Ser
 
 - GitHub: [@Mr3rf1](https://github.com/Mr3rf1)
 - Telegram: [@Mr3rf1](https://t.me/Mr3rf1)
+- 
+  ## 👨‍💻 Contributor
+
+- Telegram: [@Britz](https://t.me/rickmorti12)
