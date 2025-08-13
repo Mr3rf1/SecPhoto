@@ -193,4 +193,4 @@ This project is for educational purposes. Please respect Telegram's Terms of Ser
 - 
   ## 👨‍💻 Contributor
 
-- Telegram: [Britz] @rickmorti12
+- Telegram: [@Britz](https://t.me/rickmorti12)
