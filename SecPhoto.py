@@ -1,4 +1,4 @@
-# t.me/Mr3rf1
+# t.me/Mr3rf1  |  @rickmorti12
 
 api_id = 1234567  # set your own api_id
 api_hash = "82bd7b4562f7ju24d182bdc38huj9352"  # set your own api_key
@@ -16,9 +16,22 @@ async def main():
         from jdatetime import datetime
         from pytz import timezone
         import sqlite3
+        import hashlib
     except ImportError:
         print(' [!] Please install dependencies~> python3 -m pip install -r requirements.txt')
         exit(0)
+
+    # ---- NEW: Duplicate detection (session only) ----
+    seen_hashes = set()
+
+    def get_file_hash(file_path):
+        """Compute SHA256 hash for a file."""
+        sha256 = hashlib.sha256()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                sha256.update(chunk)
+        return sha256.hexdigest()
+    # -------------------------------------------------
 
     def get_phone_number():
         """Get phone number with validation for international format"""
@@ -135,19 +148,51 @@ async def main():
                 if hasattr(event.message.media, 'photo') and event.message.media.photo:
                     print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Found self-destructive photo in {chat_title}. Downloading...', end='')
                     file_path = await client.download_media(event.message.media, 'secret_photo.jpg')
+
+                    # ---- NEW: Duplicate detection ----
+                    media_hash = get_file_hash(file_path)
+                    if media_hash in seen_hashes:
+                        print(f'\r {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Duplicate photo detected — skipping.')
+                        os.remove(file_path)
+                        return
+                    seen_hashes.add(media_hash)
+                    # ----------------------------------
+
                     if file_path:
                         with open(file_path, 'rb') as file:
                             await client.send_file('me', file, caption=caption, parse_mode='html')
                         print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret photo from {chat_title} saved to your messages')
+                        
+                        # ---- NEW: Notification ping ----
+                        await client.send_message('me', f"✅ Saved new photo from {chat_title}")
+                        # --------------------------------
+
                         os.remove(file_path)
+
                 elif hasattr(event.message.media, 'document') and event.message.media.document:
                     print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Found self-destructive media in {chat_title}. Downloading...', end='')
                     file_path = await client.download_media(event.message.media, 'secret_media')
+
+                    # ---- NEW: Duplicate detection ----
+                    media_hash = get_file_hash(file_path)
+                    if media_hash in seen_hashes:
+                        print(f'\r {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Duplicate media detected — skipping.')
+                        os.remove(file_path)
+                        return
+                    seen_hashes.add(media_hash)
+                    # ----------------------------------
+
                     if file_path:
                         with open(file_path, 'rb') as file:
                             await client.send_file('me', file, caption=caption, parse_mode='html')
                         print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret media from {chat_title} saved to your messages')
+
+                        # ---- NEW: Notification ping ----
+                        await client.send_message('me', f"✅ Saved new media from {chat_title}")
+                        # --------------------------------
+
                         os.remove(file_path)
+
             except Exception as e:
                 print(f' {Fore.YELLOW}[{Fore.RED}ERROR{Fore.YELLOW}]{Fore.RESET} Failed to process self-destructive media: {str(e)}')
 
