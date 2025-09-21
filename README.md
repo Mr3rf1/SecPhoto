@@ -98,6 +98,15 @@ After creating the application, you'll see:
    python3 SecPhoto.py
    ```
 
+### Reply-to-Save Feature
+
+The tool now supports a convenient reply-to-save feature:
+
+1. **Automatic Detection**: The tool automatically monitors all chats and saves self-destructing media as soon as it appears
+2. **Reply Method**: If you missed a self-destructing message, simply **reply to it** and the tool will save the media
+3. **Works Everywhere**: This feature works in all types of chats (private, groups, channels)
+4. **Real-time Processing**: Both automatic detection and reply-based saving happen in real-time
+
 ### With Proxy (Tor/SOCKS5)
 
 If you need to use a proxy:
@@ -107,9 +116,9 @@ python3 SecPhoto.py -p 127.0.0.1:9050
 
 ### How It Works
 
-1. Run the command with the target chat ID or username
-2. The tool will start monitoring the specified chat
-3. Go to the Telegram chat and **reply** to any self-destructing photo/video
+1. Run the command to start monitoring all chats
+2. The tool will automatically detect and save self-destructing media in real-time
+3. **New Feature**: You can also save self-destructing media by **replying** to any message containing such media
 4. The tool will automatically download and save the media
 5. The saved media will be sent to your "Saved Messages" in Telegram
 
@@ -137,6 +146,8 @@ python3 SecPhoto.py --help
 
 - ✅ Save self-destructing photos
 - ✅ Save self-destructing videos
+- ✅ **Reply-to-save feature** - Reply to any message to save its self-destructing media
+- ✅ Real-time monitoring of all chats
 - ✅ SOCKS5 proxy support
 - ✅ Works with both usernames and numeric IDs
 - ✅ Automatic delivery to Saved Messages
