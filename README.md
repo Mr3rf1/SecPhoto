@@ -93,29 +93,16 @@ After creating the application, you'll see:
 
 ### Basic Usage
 
-1. **Start the tool with a chat username:**
+1. **Start the tool simply**
    ```bash
-   python3 SecPhoto.py -Sid <username>
-   ```
-   Example:
-   ```bash
-   python3 SecPhoto.py -Sid john_doe
-   ```
-
-2. **Or use a numeric chat ID:**
-   ```bash
-   python3 SecPhoto.py -Nid <chat_id>
-   ```
-   Example:
-   ```bash
-   python3 SecPhoto.py -Nid 123456789
+   python3 SecPhoto.py
    ```
 
 ### With Proxy (Tor/SOCKS5)
 
 If you need to use a proxy:
 ```bash
-python3 SecPhoto.py -p 127.0.0.1:9050 -Sid <username>
+python3 SecPhoto.py -p 127.0.0.1:9050
 ```
 
 ### How It Works
@@ -137,8 +124,6 @@ python3 SecPhoto.py --help
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `-Sid`, `--string-id` | Chat username | `-Sid john_doe` |
-| `-Nid`, `--numeric-id` | Numeric chat ID | `-Nid 123456789` |
 | `-p`, `--proxy` | SOCKS5 proxy (IP:PORT) | `-p 127.0.0.1:9050` |
 | `--help` | Show help message | `--help` |
 
