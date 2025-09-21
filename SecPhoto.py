@@ -88,6 +88,7 @@ async def main():
       example: {Fore.LIGHTMAGENTA_EX}-p {Fore.LIGHTCYAN_EX}127.0.0.1:9050{Fore.RESET}
 
       This tool automatically monitors all chats for self-destructive media and saves them.
+      It also checks replied messages for self-destructive media and saves those too.
     ''')
         exit(0)
 
@@ -118,38 +119,61 @@ async def main():
         await client.disconnect()
         return
 
+    async def process_self_destructive_media(message, chat_title, chat_id, username, is_reply=False):
+        """Process self-destructive media from a message"""
+        try:
+            caption = f"""{'┏' if not is_reply else '┣'}ᑕᕼᗩT Iᗪ ⤳ <a href="tg://user?id={chat_id}">{chat_id}</a>
+┣ᑌՏᗴᖇᑎᗩᗰᗴ ⤳ {'@' + username if username else '✗'}
+┣ᗰᗴՏՏᗩᘜᗴ Iᗪ ⤳ {message.id}
+┣ᗪᗩTᗴ TIᗰᗴ ⤳ {datetime.now(timezone('Asia/Tehran')).strftime("%Y/%m/%d %H:%M:%S")}
+┗ github.com/Mr3rf1
+"""
+            if is_reply:
+                caption = f"┏ᖇᗴᑭᒪIᗴᗴᗪ TO ᗰᗴՏՏᗩᘜᗴ{chr(10)}" + caption
+
+            if hasattr(message.media, 'photo') and message.media.photo:
+                print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Found self-destructive photo in {chat_title}{" (from replied message)" if is_reply else ""}. Downloading...', end='')
+                file_path = await client.download_media(message.media, 'secret_photo.jpg')
+                if file_path:
+                    with open(file_path, 'rb') as file:
+                        await client.send_file('me', file, caption=caption, parse_mode='html')
+                    print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret photo from {chat_title}{" (replied message)" if is_reply else ""} saved to your messages')
+                    os.remove(file_path)
+            elif hasattr(message.media, 'document') and message.media.document:
+                print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Found self-destructive media in {chat_title}{" (from replied message)" if is_reply else ""}. Downloading...', end='')
+                file_path = await client.download_media(message.media, 'secret_media')
+                if file_path:
+                    with open(file_path, 'rb') as file:
+                        await client.send_file('me', file, caption=caption, parse_mode='html')
+                    print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret media from {chat_title}{" (replied message)" if is_reply else ""} saved to your messages')
+                    os.remove(file_path)
+        except Exception as e:
+            print(f' {Fore.YELLOW}[{Fore.RED}ERROR{Fore.YELLOW}]{Fore.RESET} Failed to process self-destructive media: {str(e)}')
+
     @client.on(events.NewMessage)
     async def handler(event):
+        # Check if the current message has self-destructive media
         if event.message.media and hasattr(event.message.media, 'ttl_seconds') and event.message.media.ttl_seconds:
             try:
                 chat = await event.get_chat()
                 chat_title = getattr(chat, 'title', getattr(chat, 'first_name', 'Unknown'))
                 username = getattr(chat, 'username', None)
-                caption = f"""
-┏ᑕᕼᗩT Iᗪ ⤳ <a href="tg://user?id={event.chat_id}">{event.chat_id}</a>
-┣ᑌՏᗴᖇᑎᗩᗰᗴ ⤳ {'@' + username if username else '✗'}
-┣ᗰᗴՏՏᗩᘜᗴ Iᗪ ⤳ {event.message.id}
-┣ᗪᗩTᗴ TIᗰᗴ ⤳ {datetime.now(timezone('Asia/Tehran')).strftime("%Y/%m/%d %H:%M:%S")}
-┗ github.com/Mr3rf1
-"""
-                if hasattr(event.message.media, 'photo') and event.message.media.photo:
-                    print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Found self-destructive photo in {chat_title}. Downloading...', end='')
-                    file_path = await client.download_media(event.message.media, 'secret_photo.jpg')
-                    if file_path:
-                        with open(file_path, 'rb') as file:
-                            await client.send_file('me', file, caption=caption, parse_mode='html')
-                        print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret photo from {chat_title} saved to your messages')
-                        os.remove(file_path)
-                elif hasattr(event.message.media, 'document') and event.message.media.document:
-                    print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Found self-destructive media in {chat_title}. Downloading...', end='')
-                    file_path = await client.download_media(event.message.media, 'secret_media')
-                    if file_path:
-                        with open(file_path, 'rb') as file:
-                            await client.send_file('me', file, caption=caption, parse_mode='html')
-                        print(f'\r {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Secret media from {chat_title} saved to your messages')
-                        os.remove(file_path)
+                await process_self_destructive_media(event.message, chat_title, event.chat_id, username, False)
             except Exception as e:
                 print(f' {Fore.YELLOW}[{Fore.RED}ERROR{Fore.YELLOW}]{Fore.RESET} Failed to process self-destructive media: {str(e)}')
+        
+        # Check if this message is a reply to another message
+        if event.message.reply_to_msg_id:
+            try:
+                # Get the replied-to message
+                replied_message = await event.get_reply_message()
+                if replied_message and replied_message.media and hasattr(replied_message.media, 'ttl_seconds') and replied_message.media.ttl_seconds:
+                    chat = await event.get_chat()
+                    chat_title = getattr(chat, 'title', getattr(chat, 'first_name', 'Unknown'))
+                    username = getattr(chat, 'username', None)
+                    await process_self_destructive_media(replied_message, chat_title, event.chat_id, username, True)
+            except Exception as e:
+                print(f' {Fore.YELLOW}[{Fore.RED}ERROR{Fore.YELLOW}]{Fore.RESET} Failed to process replied message: {str(e)}')
 
     await client.run_until_disconnected()
 
