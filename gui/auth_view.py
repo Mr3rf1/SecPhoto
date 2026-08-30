@@ -192,7 +192,7 @@ class AuthView(QWidget):
         top_bar = QHBoxLayout()
         btn_back = QPushButton("← Back")
         btn_back.setStyleSheet("padding: 4px 10px; font-size: 12px;")
-        btn_back.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        btn_back.clicked.connect(self._on_back_from_login_clicked)
         top_bar.addWidget(btn_back)
         top_bar.addStretch()
         
@@ -231,41 +231,69 @@ class AuthView(QWidget):
         self.btn_send_code.clicked.connect(self._on_send_code_clicked)
         card_layout.addWidget(self.btn_send_code)
 
-        # --- Dynamic Fields (Shown after code is requested) ---
-        self.dynamic_auth_frame = QFrame()
-        self.dynamic_auth_frame.setStyleSheet("""
+        # --- Dynamic Step 2: Verification Code Input (Shown after code is sent) ---
+        self.code_frame = QFrame()
+        self.code_frame.setStyleSheet("""
             background-color: #0d1117;
             border: 1px solid #388bfd;
             border-radius: 10px;
             padding: 12px;
         """)
-        dyn_layout = QVBoxLayout(self.dynamic_auth_frame)
-        dyn_layout.setSpacing(10)
+        code_layout = QVBoxLayout(self.code_frame)
+        code_layout.setSpacing(10)
 
-        dyn_title = QLabel("🔑 Verification Step")
-        dyn_title.setStyleSheet("font-weight: 700; color: #58a6ff; font-size: 13px;")
-        dyn_layout.addWidget(dyn_title)
+        code_title = QLabel("🔑 Step 2: Telegram Verification Code")
+        code_title.setStyleSheet("font-weight: 700; color: #58a6ff; font-size: 13px;")
+        code_layout.addWidget(code_title)
 
-        dyn_layout.addWidget(QLabel("Enter Verification Code (sent to your Telegram app / SMS):"))
+        self.lbl_code_prompt = QLabel("Enter Verification Code (sent to your Telegram app / SMS):")
+        code_layout.addWidget(self.lbl_code_prompt)
+
         self.input_code = QLineEdit()
         self.input_code.setPlaceholderText("e.g. 12345")
-        dyn_layout.addWidget(self.input_code)
+        self.input_code.returnPressed.connect(self._on_verify_code_clicked)
+        code_layout.addWidget(self.input_code)
 
-        # 2FA Password Field (dynamic / optional)
-        self.lbl_password = QLabel("2FA Password (if enabled on your account):")
+        self.btn_verify_code = QPushButton("✅ Verify Code")
+        self.btn_verify_code.setObjectName("primaryBtn")
+        self.btn_verify_code.clicked.connect(self._on_verify_code_clicked)
+        code_layout.addWidget(self.btn_verify_code)
+
+        self.code_frame.setVisible(False)
+        card_layout.addWidget(self.code_frame)
+
+        # --- Dynamic Step 3: 2FA Password Input (Shown ONLY if account has 2FA) ---
+        self.password_frame = QFrame()
+        self.password_frame.setStyleSheet("""
+            background-color: #0d1117;
+            border: 1px solid #a371f7;
+            border-radius: 10px;
+            padding: 12px;
+        """)
+        pwd_layout = QVBoxLayout(self.password_frame)
+        pwd_layout.setSpacing(10)
+
+        pwd_title = QLabel("🔒 Step 3: Two-Step Verification (2FA)")
+        pwd_title.setStyleSheet("font-weight: 700; color: #d2a8ff; font-size: 13px;")
+        pwd_layout.addWidget(pwd_title)
+
+        self.lbl_password = QLabel("This account has 2FA enabled. Enter your Cloud Password:")
+        self.lbl_password.setStyleSheet("color: #e6edf3;")
+        pwd_layout.addWidget(self.lbl_password)
+
         self.input_password = QLineEdit()
         self.input_password.setEchoMode(QLineEdit.Password)
-        self.input_password.setPlaceholderText("Your Two-Step Verification Password")
-        dyn_layout.addWidget(self.lbl_password)
-        dyn_layout.addWidget(self.input_password)
+        self.input_password.setPlaceholderText("Enter your 2FA password")
+        self.input_password.returnPressed.connect(self._on_submit_password_clicked)
+        pwd_layout.addWidget(self.input_password)
 
-        self.btn_verify_login = QPushButton("✅ Complete Sign In")
-        self.btn_verify_login.setObjectName("successBtn")
-        self.btn_verify_login.clicked.connect(self._on_verify_login_clicked)
-        dyn_layout.addWidget(self.btn_verify_login)
+        self.btn_verify_password = QPushButton("🔓 Submit 2FA Password & Log In")
+        self.btn_verify_password.setObjectName("successBtn")
+        self.btn_verify_password.clicked.connect(self._on_submit_password_clicked)
+        pwd_layout.addWidget(self.btn_verify_password)
 
-        self.dynamic_auth_frame.setVisible(False)
-        card_layout.addWidget(self.dynamic_auth_frame)
+        self.password_frame.setVisible(False)
+        card_layout.addWidget(self.password_frame)
 
         # Status Message Box
         self.login_status_lbl = QLabel("")
@@ -446,47 +474,72 @@ class AuthView(QWidget):
 
         self.sig_request_code.emit(phone, api_id, api_hash, session_name, "")
 
+    def _on_back_from_login_clicked(self):
+        self._reset_login_form()
+        self.stack.setCurrentIndex(0)
+
+    def _reset_login_form(self):
+        """Reset dynamic login frames and inputs."""
+        self.code_frame.setVisible(False)
+        self.password_frame.setVisible(False)
+        self.input_code.clear()
+        self.input_password.clear()
+        self.login_status_lbl.setText("")
+        self.btn_send_code.setEnabled(True)
+        self.btn_verify_code.setEnabled(True)
+        self.btn_verify_password.setEnabled(True)
+
     def on_code_request_result(self, success: bool, message: str):
         self.btn_send_code.setEnabled(True)
         if success:
             self.login_status_lbl.setText(f"✅ {message}")
             self.login_status_lbl.setStyleSheet("color: #3fb950;")
-            self.dynamic_auth_frame.setVisible(True)
+            self.code_frame.setVisible(True)
+            self.password_frame.setVisible(False)
             self.input_code.setFocus()
         else:
             self.login_status_lbl.setText(f"❌ {message}")
             self.login_status_lbl.setStyleSheet("color: #f85149;")
 
-    def _on_verify_login_clicked(self):
+    def _on_verify_code_clicked(self):
         code = self.input_code.text().strip()
         if not code:
             self.login_status_lbl.setText("❌ Please enter the verification code.")
             self.login_status_lbl.setStyleSheet("color: #f85149;")
             return
 
-        password = self.input_password.text()
-        self.btn_verify_login.setEnabled(False)
-        self.login_status_lbl.setText("⏳ Verifying credentials...")
+        self.btn_verify_code.setEnabled(False)
+        self.login_status_lbl.setText("⏳ Verifying Telegram code...")
         self.login_status_lbl.setStyleSheet("color: #58a6ff;")
 
-        # If user entered password already, we can submit code first or 2fa
         self.sig_submit_code.emit(code)
 
+    def _on_submit_password_clicked(self):
+        password = self.input_password.text()
+        if not password:
+            self.login_status_lbl.setText("❌ Please enter your 2FA password.")
+            self.login_status_lbl.setStyleSheet("color: #f85149;")
+            return
+
+        self.btn_verify_password.setEnabled(False)
+        self.login_status_lbl.setText("⏳ Verifying 2FA password...")
+        self.login_status_lbl.setStyleSheet("color: #58a6ff;")
+
+        self.sig_submit_2fa.emit(password)
+
     def on_auth_result(self, success: bool, requires_2fa: bool, error_msg: str, user_info: dict):
-        self.btn_verify_login.setEnabled(True)
+        self.btn_verify_code.setEnabled(True)
+        self.btn_verify_password.setEnabled(True)
         self.btn_load_session.setEnabled(True)
 
         if success:
             self.login_status_lbl.setText("✅ Logged in successfully!")
             self.login_status_lbl.setStyleSheet("color: #3fb950;")
         elif requires_2fa:
-            self.login_status_lbl.setText("⚠️ 2FA Password Required. Enter your 2FA password above.")
-            self.login_status_lbl.setStyleSheet("color: #d29922;")
-            self.lbl_password.setStyleSheet("color: #d2a8ff; font-weight: 700;")
+            self.login_status_lbl.setText("🔒 Two-Step Verification Required. Please enter your 2FA password below.")
+            self.login_status_lbl.setStyleSheet("color: #d2a8ff; font-weight: 600;")
+            self.password_frame.setVisible(True)
             self.input_password.setFocus()
-            # If user has already entered 2FA password, submit it
-            if self.input_password.text().strip():
-                self.sig_submit_2fa.emit(self.input_password.text().strip())
         else:
             self.login_status_lbl.setText(f"❌ {error_msg}")
             self.login_status_lbl.setStyleSheet("color: #f85149;")
