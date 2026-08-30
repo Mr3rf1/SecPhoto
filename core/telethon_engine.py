@@ -24,6 +24,15 @@ except ImportError:
     pytz = None
 
 
+try:
+    from colorama import Fore, init as colorama_init
+    colorama_init(autoreset=True)
+except ImportError:
+    class _Fore:
+        GREEN = RED = YELLOW = CYAN = MAGENTA = RESET = ""
+    Fore = _Fore()
+
+
 class TelethonEngine:
     """Encapsulates Telethon client operations, event listeners, and media capture."""
 
@@ -65,14 +74,36 @@ class TelethonEngine:
         self.on_status_changed: Optional[Callable[[str], None]] = None
 
     def log(self, level: str, message: str):
-        if self.on_log:
-            self.on_log(level, message)
+        """Log message to both stdout terminal and GUI callback."""
+        lvl = level.lower()
+        if lvl == "success":
+            color = Fore.GREEN
+            tag = "SUCCESS"
+        elif lvl in ("warning", "warn"):
+            color = Fore.YELLOW
+            tag = "WARN"
+        elif lvl in ("error", "fatal"):
+            color = Fore.RED
+            tag = "ERROR"
+        elif lvl == "special":
+            color = Fore.MAGENTA
+            tag = "MEDIA"
         else:
-            print(f"[{level.upper()}] {message}")
+            color = Fore.CYAN
+            tag = "INFO"
+
+        print(f" {color}[{tag}]{Fore.RESET} {message}", flush=True)
+
+        if self.on_log:
+            try:
+                self.on_log(level, message)
+            except Exception:
+                pass
 
     def create_client(self) -> TelegramClient:
         """Instantiate TelegramClient with proxy if configured."""
         if self.proxy:
+            self.log("info", f"Using proxy: {self.proxy}")
             self.client = TelegramClient(self.session_path, self.api_id, self.api_hash, proxy=self.proxy)
         else:
             self.client = TelegramClient(self.session_path, self.api_id, self.api_hash)
@@ -84,7 +115,10 @@ class TelethonEngine:
             self.create_client()
 
         try:
-            await self.client.connect()
+            if not self.client.is_connected():
+                self.log("info", "Connecting to Telegram servers...")
+                await self.client.connect()
+                self.log("success", "Connected to Telegram servers.")
             return True
         except sqlite3.OperationalError as e:
             if "database is locked" in str(e).lower():
@@ -110,6 +144,7 @@ class TelethonEngine:
         await self.connect_client()
         if await self.client.is_user_authorized():
             me = await self.client.get_me()
+            self.log("success", f"Session authorized for: {me.first_name} (@{me.username or me.id})")
             return {
                 "id": me.id,
                 "first_name": me.first_name or "",
@@ -124,9 +159,10 @@ class TelethonEngine:
         await self.connect_client()
         self.phone_number = phone.strip()
         try:
+            self.log("info", f"Requesting Telegram code for {self.phone_number}...")
             sent_code = await self.client.send_code_request(phone=self.phone_number)
             self.phone_code_hash = sent_code.phone_code_hash
-            self.log("info", f"Verification code sent to {self.phone_number}")
+            self.log("success", f"Verification code sent to {self.phone_number}")
             return {
                 "success": True,
                 "phone_code_hash": self.phone_code_hash,
@@ -141,15 +177,25 @@ class TelethonEngine:
 
     async def complete_sign_in_code(self, code: str) -> Dict[str, Any]:
         """Complete sign in with code. Returns status or prompts for 2FA password."""
-        if not self.client or not self.phone_number or not self.phone_code_hash:
+        if not self.client or not self.phone_number:
+            self.log("error", "Client or phone number missing. Request code first.")
             return {"success": False, "error": "Login session not initialized. Request code first."}
 
+        clean_code = re.sub(r'[\s\-]', '', str(code).strip())
+        self.log("info", f"Submitting verification code '{clean_code}' for {self.phone_number}...")
+
         try:
-            await self.client.sign_in(
-                phone=self.phone_number,
-                code=code.strip(),
-                phone_code_hash=self.phone_code_hash
-            )
+            if self.phone_code_hash:
+                await self.client.sign_in(
+                    phone=self.phone_number,
+                    code=clean_code,
+                    phone_code_hash=self.phone_code_hash
+                )
+            else:
+                await self.client.sign_in(
+                    phone=self.phone_number,
+                    code=clean_code
+                )
             me = await self.client.get_me()
             self.log("success", f"Successfully logged in as {me.first_name} (@{me.username or me.id})")
             return {
@@ -164,11 +210,11 @@ class TelethonEngine:
                 }
             }
         except SessionPasswordNeededError:
-            self.log("warning", "Two-step verification (2FA) password required.")
+            self.log("warning", "Two-step verification (2FA) password required for this account.")
             return {"success": False, "requires_2fa": True, "error": "2FA Password Required"}
         except (PhoneCodeInvalidError, PhoneCodeExpiredError) as e:
             self.log("error", f"Verification code error: {str(e)}")
-            return {"success": False, "requires_2fa": False, "error": "Invalid or expired code."}
+            return {"success": False, "requires_2fa": False, "error": f"Invalid or expired code: {str(e)}"}
         except Exception as e:
             self.log("error", f"Sign in failed: {str(e)}")
             return {"success": False, "requires_2fa": False, "error": str(e)}
@@ -178,8 +224,9 @@ class TelethonEngine:
         if not self.client:
             return {"success": False, "error": "Client not initialized."}
 
+        self.log("info", "Submitting 2FA password...")
         try:
-            await self.client.sign_in(password=password.strip())
+            await self.client.sign_in(password=str(password).strip())
             me = await self.client.get_me()
             self.log("success", f"Successfully authenticated with 2FA as {me.first_name}!")
             return {

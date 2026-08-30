@@ -71,12 +71,17 @@ class TelethonWorker(QObject):
         """Request verification code for new login."""
         async def _task():
             self.sig_status_changed.emit("sending_code")
-            res = await self.engine.request_login_code(phone)
-            if res.get("success"):
-                self.sig_code_sent.emit(True, f"Code sent to {phone}")
-            else:
-                self.sig_code_sent.emit(False, res.get("error", "Unknown error"))
-            self.sig_status_changed.emit("idle")
+            try:
+                res = await self.engine.request_login_code(phone)
+                if res.get("success"):
+                    self.sig_code_sent.emit(True, f"Code sent to {phone}")
+                else:
+                    self.sig_code_sent.emit(False, res.get("error", "Unknown error"))
+            except Exception as e:
+                self.sig_log.emit("error", f"Error requesting code: {str(e)}")
+                self.sig_code_sent.emit(False, str(e))
+            finally:
+                self.sig_status_changed.emit("idle")
 
         self.run_coroutine(_task())
 
@@ -85,14 +90,19 @@ class TelethonWorker(QObject):
         """Submit verification code."""
         async def _task():
             self.sig_status_changed.emit("verifying_code")
-            res = await self.engine.complete_sign_in_code(code)
-            if res.get("success"):
-                self.sig_auth_result.emit(True, False, "", res.get("user", {}))
-            elif res.get("requires_2fa"):
-                self.sig_auth_result.emit(False, True, "2FA Password Required", {})
-            else:
-                self.sig_auth_result.emit(False, False, res.get("error", "Sign in failed"), {})
-            self.sig_status_changed.emit("idle")
+            try:
+                res = await self.engine.complete_sign_in_code(code)
+                if res.get("success"):
+                    self.sig_auth_result.emit(True, False, "", res.get("user", {}))
+                elif res.get("requires_2fa"):
+                    self.sig_auth_result.emit(False, True, "2FA Password Required", {})
+                else:
+                    self.sig_auth_result.emit(False, False, res.get("error", "Sign in failed"), {})
+            except Exception as e:
+                self.sig_log.emit("error", f"Error during verification: {str(e)}")
+                self.sig_auth_result.emit(False, False, str(e), {})
+            finally:
+                self.sig_status_changed.emit("idle")
 
         self.run_coroutine(_task())
 
@@ -101,12 +111,17 @@ class TelethonWorker(QObject):
         """Submit 2FA password."""
         async def _task():
             self.sig_status_changed.emit("verifying_2fa")
-            res = await self.engine.complete_sign_in_2fa(password)
-            if res.get("success"):
-                self.sig_auth_result.emit(True, False, "", res.get("user", {}))
-            else:
-                self.sig_auth_result.emit(False, True, res.get("error", "Invalid 2FA password"), {})
-            self.sig_status_changed.emit("idle")
+            try:
+                res = await self.engine.complete_sign_in_2fa(password)
+                if res.get("success"):
+                    self.sig_auth_result.emit(True, False, "", res.get("user", {}))
+                else:
+                    self.sig_auth_result.emit(False, True, res.get("error", "Invalid 2FA password"), {})
+            except Exception as e:
+                self.sig_log.emit("error", f"Error during 2FA: {str(e)}")
+                self.sig_auth_result.emit(False, True, str(e), {})
+            finally:
+                self.sig_status_changed.emit("idle")
 
         self.run_coroutine(_task())
 
@@ -124,7 +139,8 @@ class TelethonWorker(QObject):
             except Exception as e:
                 self.sig_log.emit("error", f"Error checking session {session_name}: {e}")
                 self.sig_session_checked.emit(False, {}, session_name)
-            self.sig_status_changed.emit("idle")
+            finally:
+                self.sig_status_changed.emit("idle")
 
         self.run_coroutine(_task())
 
