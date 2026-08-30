@@ -91,12 +91,29 @@ After creating the application, you'll see:
 
 ## 📖 Usage
 
-### Basic Usage
+### 🖥️ Modern PySide6 GUI Application (Recommended)
 
-1. **Start the tool simply**
-   ```bash
-   python3 SecPhoto.py
-   ```
+To launch the modern graphical user interface:
+```bash
+python run_gui.py
+```
+
+**GUI Features:**
+- **Login New Account**: Interactive form with `api_id`, `api_hash`, phone number, dynamic Telegram verification code input, and 2FA password support. Automatically creates and stores your session.
+- **Add Logged In Session**: Quick file picker to import any `.session` file or select from detected session files.
+- **Real-Time Monitoring Dashboard**:
+  - Live power toggle switch (Start / Stop monitoring).
+  - Metrics & counter cards (Photos, Videos, Albums intercepted).
+  - Real-time visual media feed with sender details, TTL timer badges, and 1-click links.
+  - Built-in color-coded terminal log console with auto-scroll and clipboard copy.
+  - SOCKS5 proxy and local storage backup configuration.
+
+### 💻 CLI / Terminal Mode
+
+You can also run directly in the terminal:
+```bash
+python SecPhoto.py
+```
 
 ### Reply-to-Save Feature
 

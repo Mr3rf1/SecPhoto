@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Database
+*.db
+*.db-journal
+test_gifbot.db
+
+# Logs
+*.log
+logs/
+
+# Configuration
+# config.yaml
+# config.yml
+# config.json
+# .env
+
+# AI/ML Models
+models/
+*.pth
+*.h5
+*.pkl
+
+# Alembic
+alembic/versions/*.py
+!alembic/versions/.gitkeep
+!alembic/versions/a1b2c3d4e5f6_add_locked_channel_table.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.swp

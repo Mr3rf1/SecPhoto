@@ -1,0 +1,16 @@
+{
+    "api_id": 1234567,
+    "api_hash": "82bd7b4562f7ju24d182bdc38huj9352",
+    "last_session": "secret",
+    "proxy_enabled": false,
+    "proxy_type": "SOCKS5",
+    "proxy_host": "127.0.0.1",
+    "proxy_port": 9050,
+    "proxy_user": "",
+    "proxy_password": "",
+    "save_local_backup": true,
+    "local_backup_dir": "C:\\Users\\ASUS\\Desktop\\CodeStuff\\SecPhoto\\saved_media",
+    "forward_to_saved_messages": true,
+    "album_debounce_ms": 700,
+    "timezone": "Asia/Tehran"
+}

@@ -1,0 +1,168 @@
+import asyncio
+import threading
+from typing import Optional, Dict, Any
+
+from PySide6.QtCore import QObject, QThread, Signal, Slot
+from core.telethon_engine import TelethonEngine
+
+
+class TelethonWorker(QObject):
+    """QObject worker managing an asyncio loop for Telethon inside a secondary QThread."""
+
+    # Signals emitted to the main GUI thread
+    sig_log = Signal(str, str)  # (level, message)
+    sig_status_changed = Signal(str)  # ("idle", "connecting", "listening", "error", etc.)
+    sig_code_sent = Signal(bool, str)  # (success, message)
+    sig_auth_result = Signal(bool, bool, str, dict)  # (success, requires_2fa, error_msg, user_info)
+    sig_session_checked = Signal(bool, dict, str)  # (is_authorized, user_info, session_name)
+    sig_media_captured = Signal(dict)  # media metadata dict
+    sig_engine_stopped = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.loop: Optional[asyncio.AbstractEventLoop] = None
+        self.engine: Optional[TelethonEngine] = None
+        self._is_running = False
+
+    def init_engine(
+        self,
+        session_name_or_path: str,
+        api_id: int,
+        api_hash: str,
+        proxy: Optional[tuple] = None,
+        save_local_backup: bool = True,
+        local_backup_dir: str = "saved_media",
+        album_debounce_ms: int = 700,
+        timezone_str: str = "Asia/Tehran"
+    ):
+        """Configure or re-create the internal TelethonEngine."""
+        self.engine = TelethonEngine(
+            session_name_or_path=session_name_or_path,
+            api_id=api_id,
+            api_hash=api_hash,
+            proxy=proxy,
+            save_local_backup=save_local_backup,
+            local_backup_dir=local_backup_dir,
+            album_debounce_sec=album_debounce_ms / 1000.0,
+            timezone_str=timezone_str
+        )
+        self.engine.on_log = lambda lvl, msg: self.sig_log.emit(lvl, msg)
+        self.engine.on_media_captured = lambda data: self.sig_media_captured.emit(data)
+        self.engine.on_status_changed = lambda st: self.sig_status_changed.emit(st)
+
+    @Slot()
+    def start_event_loop(self):
+        """Entry point when the QThread starts."""
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self._is_running = True
+        self.loop.run_forever()
+
+    def run_coroutine(self, coro):
+        """Schedule a coroutine onto the worker's asyncio event loop safely."""
+        if self.loop and self.loop.is_running():
+            return asyncio.run_coroutine_threadsafe(coro, self.loop)
+        return None
+
+    # Asynchronous actions callable from GUI via Slots
+
+    @Slot(str)
+    def request_login_code(self, phone: str):
+        """Request verification code for new login."""
+        async def _task():
+            self.sig_status_changed.emit("sending_code")
+            res = await self.engine.request_login_code(phone)
+            if res.get("success"):
+                self.sig_code_sent.emit(True, f"Code sent to {phone}")
+            else:
+                self.sig_code_sent.emit(False, res.get("error", "Unknown error"))
+            self.sig_status_changed.emit("idle")
+
+        self.run_coroutine(_task())
+
+    @Slot(str)
+    def submit_verification_code(self, code: str):
+        """Submit verification code."""
+        async def _task():
+            self.sig_status_changed.emit("verifying_code")
+            res = await self.engine.complete_sign_in_code(code)
+            if res.get("success"):
+                self.sig_auth_result.emit(True, False, "", res.get("user", {}))
+            elif res.get("requires_2fa"):
+                self.sig_auth_result.emit(False, True, "2FA Password Required", {})
+            else:
+                self.sig_auth_result.emit(False, False, res.get("error", "Sign in failed"), {})
+            self.sig_status_changed.emit("idle")
+
+        self.run_coroutine(_task())
+
+    @Slot(str)
+    def submit_2fa_password(self, password: str):
+        """Submit 2FA password."""
+        async def _task():
+            self.sig_status_changed.emit("verifying_2fa")
+            res = await self.engine.complete_sign_in_2fa(password)
+            if res.get("success"):
+                self.sig_auth_result.emit(True, False, "", res.get("user", {}))
+            else:
+                self.sig_auth_result.emit(False, True, res.get("error", "Invalid 2FA password"), {})
+            self.sig_status_changed.emit("idle")
+
+        self.run_coroutine(_task())
+
+    @Slot(str)
+    def validate_session(self, session_name: str):
+        """Check if an existing session is authorized."""
+        async def _task():
+            self.sig_status_changed.emit("checking_session")
+            try:
+                user_info = await self.engine.check_is_authorized()
+                if user_info:
+                    self.sig_session_checked.emit(True, user_info, session_name)
+                else:
+                    self.sig_session_checked.emit(False, {}, session_name)
+            except Exception as e:
+                self.sig_log.emit("error", f"Error checking session {session_name}: {e}")
+                self.sig_session_checked.emit(False, {}, session_name)
+            self.sig_status_changed.emit("idle")
+
+        self.run_coroutine(_task())
+
+    @Slot()
+    def start_monitoring(self):
+        """Start listening for self-destructing media."""
+        async def _task():
+            try:
+                await self.engine.start_monitoring()
+            except Exception as e:
+                self.sig_log.emit("error", f"Monitoring error: {e}")
+                self.sig_status_changed.emit("error")
+
+        self.run_coroutine(_task())
+
+    @Slot()
+    def stop_monitoring(self):
+        """Stop listening and disconnect."""
+        async def _task():
+            try:
+                if self.engine:
+                    await self.engine.stop_monitoring()
+            except Exception as e:
+                self.sig_log.emit("error", f"Error stopping monitor: {e}")
+            finally:
+                self.sig_status_changed.emit("idle")
+                self.sig_engine_stopped.emit()
+
+        self.run_coroutine(_task())
+
+    @Slot()
+    def shutdown(self):
+        """Cleanly stop the asyncio event loop."""
+        async def _stop():
+            if self.engine:
+                await self.engine.stop_monitoring()
+            if self.loop:
+                self.loop.stop()
+
+        if self.loop and self.loop.is_running():
+            self.run_coroutine(_stop())
