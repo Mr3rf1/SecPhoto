@@ -56,6 +56,7 @@ class TelethonEngine:
 
         self.client: Optional[TelegramClient] = None
         self.is_monitoring: bool = False
+        self._listeners_registered: bool = False
 
         # Auth state storage
         self.phone_number: Optional[str] = None
@@ -354,9 +355,17 @@ class TelethonEngine:
             self.log("error", f"Failed to process secret {media_type}: {str(e)}")
 
     def register_listeners(self):
-        """Register Telethon event listeners."""
+        """Register Telethon event listeners if not already registered."""
+        if self._listeners_registered:
+            return
+
+        self._listeners_registered = True
+
         @self.client.on(events.NewMessage)
         async def on_new_message(event):
+            if not self.is_monitoring:
+                return
+
             try:
                 chat = await event.get_chat()
                 chat_title = getattr(chat, 'title', getattr(chat, 'first_name', 'Unknown Chat'))
@@ -381,6 +390,8 @@ class TelethonEngine:
 
     async def start_monitoring(self):
         """Start listening for incoming self-destructive media."""
+        await self.connect_client()
+
         if not self.client or not await self.client.is_user_authorized():
             self.log("error", "Client is not authorized. Cannot start monitoring.")
             return
@@ -399,4 +410,4 @@ class TelethonEngine:
             self.on_status_changed("idle")
         if self.client and self.client.is_connected():
             await self.client.disconnect()
-            self.log("info", "Disconnected from Telegram.")
+            self.log("info", "Disconnected from Telegram (Monitoring stopped).")
