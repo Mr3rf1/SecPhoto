@@ -61,8 +61,27 @@ class TelethonWorker(QObject):
     def run_coroutine(self, coro):
         """Schedule a coroutine onto the worker's asyncio event loop safely."""
         if self.loop and self.loop.is_running():
-            return asyncio.run_coroutine_threadsafe(coro, self.loop)
-        return None
+            future = asyncio.run_coroutine_threadsafe(coro, self.loop)
+
+            def _on_future_done(fut):
+                try:
+                    exc = fut.exception()
+                    if exc:
+                        print(f" [ERROR] Coroutine raised exception: {exc}", flush=True)
+                        import traceback
+                        traceback.print_exception(type(exc), exc, exc.__traceback__)
+                        self.sig_log.emit("error", f"Async task failed: {exc}")
+                        self.sig_auth_result.emit(False, False, str(exc), {})
+                        self.sig_status_changed.emit("idle")
+                except Exception as err:
+                    print(f" [ERROR] Error reading task future: {err}", flush=True)
+
+            future.add_done_callback(_on_future_done)
+            return future
+        else:
+            print(" [ERROR] Worker event loop is not running!", flush=True)
+            self.sig_log.emit("error", "Background event loop is not running.")
+            return None
 
     # Asynchronous actions callable from GUI via Slots
 

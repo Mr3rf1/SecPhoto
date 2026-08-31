@@ -181,21 +181,26 @@ class TelethonEngine:
             self.log("error", "Client or phone number missing. Request code first.")
             return {"success": False, "error": "Login session not initialized. Request code first."}
 
+        await self.connect_client()
         clean_code = re.sub(r'[\s\-]', '', str(code).strip())
         self.log("info", f"Submitting verification code '{clean_code}' for {self.phone_number}...")
 
         try:
             if self.phone_code_hash:
-                await self.client.sign_in(
+                sign_in_coro = self.client.sign_in(
                     phone=self.phone_number,
                     code=clean_code,
                     phone_code_hash=self.phone_code_hash
                 )
             else:
-                await self.client.sign_in(
+                sign_in_coro = self.client.sign_in(
                     phone=self.phone_number,
                     code=clean_code
                 )
+            
+            # Use 30s timeout so it never hangs indefinitely
+            await asyncio.wait_for(sign_in_coro, timeout=30.0)
+
             me = await self.client.get_me()
             self.log("success", f"Successfully logged in as {me.first_name} (@{me.username or me.id})")
             return {
@@ -215,8 +220,17 @@ class TelethonEngine:
         except (PhoneCodeInvalidError, PhoneCodeExpiredError) as e:
             self.log("error", f"Verification code error: {str(e)}")
             return {"success": False, "requires_2fa": False, "error": f"Invalid or expired code: {str(e)}"}
+        except asyncio.TimeoutError:
+            self.log("error", "Telegram code verification request timed out. Please check your network/proxy.")
+            return {"success": False, "requires_2fa": False, "error": "Request timed out. Check network or proxy."}
         except Exception as e:
-            self.log("error", f"Sign in failed: {str(e)}")
+            err_name = type(e).__name__.lower()
+            err_str = str(e).lower()
+            if "sessionpasswordneeded" in err_name or "password" in err_str or "2fa" in err_str:
+                self.log("warning", "Two-step verification (2FA) password required for this account.")
+                return {"success": False, "requires_2fa": True, "error": "2FA Password Required"}
+
+            self.log("error", f"Sign in failed: {str(e)} ({type(e).__name__})")
             return {"success": False, "requires_2fa": False, "error": str(e)}
 
     async def complete_sign_in_2fa(self, password: str) -> Dict[str, Any]:
@@ -224,9 +238,11 @@ class TelethonEngine:
         if not self.client:
             return {"success": False, "error": "Client not initialized."}
 
-        self.log("info", "Submitting 2FA password...")
+        await self.connect_client()
+        clean_pwd = str(password).strip()
+        self.log("info", "Submitting 2FA password to Telegram...")
         try:
-            await self.client.sign_in(password=str(password).strip())
+            await asyncio.wait_for(self.client.sign_in(password=clean_pwd), timeout=30.0)
             me = await self.client.get_me()
             self.log("success", f"Successfully authenticated with 2FA as {me.first_name}!")
             return {
@@ -242,6 +258,9 @@ class TelethonEngine:
         except PasswordHashInvalidError:
             self.log("error", "Incorrect 2FA password.")
             return {"success": False, "error": "Incorrect 2FA password."}
+        except asyncio.TimeoutError:
+            self.log("error", "2FA verification timed out. Please check your connection.")
+            return {"success": False, "error": "2FA verification timed out."}
         except Exception as e:
             self.log("error", f"2FA verification failed: {str(e)}")
             return {"success": False, "error": str(e)}
