@@ -24,7 +24,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "save_local_backup": True,
     "local_backup_dir": str(APP_DIR / "saved_media"),
     "forward_to_saved_messages": True,
-    "album_debounce_ms": 700,
     "timezone": "Asia/Tehran"
 }
 

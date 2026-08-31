@@ -30,13 +30,7 @@ class MediaCard(QFrame):
         local_files = data.get("local_files", [])
 
         # Border color based on type
-        border_color = "#388bfd"
-        if media_type == "album":
-            border_color = "#a371f7"
-            type_label_text = f"📦 Album ({count} items)"
-            type_badge_bg = "rgba(163, 113, 247, 0.2)"
-            type_badge_color = "#d2a8ff"
-        elif media_type == "video":
+        if media_type == "video":
             border_color = "#f0883e"
             type_label_text = "🎥 Secret Video"
             type_badge_bg = "rgba(240, 136, 62, 0.2)"

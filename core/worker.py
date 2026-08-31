@@ -49,7 +49,6 @@ class TelethonWorker(QObject):
         proxy: Optional[tuple] = None,
         save_local_backup: bool = True,
         local_backup_dir: str = "saved_media",
-        album_debounce_ms: int = 700,
         timezone_str: str = "Asia/Tehran"
     ):
         """Configure internal TelethonEngine."""
@@ -60,7 +59,6 @@ class TelethonWorker(QObject):
             proxy=proxy,
             save_local_backup=save_local_backup,
             local_backup_dir=local_backup_dir,
-            album_debounce_sec=album_debounce_ms / 1000.0,
             timezone_str=timezone_str
         )
         self.engine.on_log = lambda lvl, msg: self.sig_log.emit(lvl, msg)

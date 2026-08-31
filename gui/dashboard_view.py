@@ -154,16 +154,14 @@ class DashboardView(QWidget):
     def _build_stats_row(self) -> QHBoxLayout:
         """Metric Counter Cards Row."""
         row = QHBoxLayout()
-        row.setSpacing(12)
+        row.setSpacing(14)
 
         self.card_photos = StatCard("Secret Photos", "📸", accent_color="#58a6ff")
         self.card_videos = StatCard("Secret Videos", "🎥", accent_color="#f0883e")
-        self.card_albums = StatCard("Secret Albums", "📦", accent_color="#a371f7")
         self.card_total = StatCard("Total Saved", "⚡", accent_color="#3fb950")
 
         row.addWidget(self.card_photos)
         row.addWidget(self.card_videos)
-        row.addWidget(self.card_albums)
         row.addWidget(self.card_total)
 
         return row
@@ -183,7 +181,7 @@ class DashboardView(QWidget):
         toolbar.addStretch()
 
         self.filter_combo = QComboBox()
-        self.filter_combo.addItems(["All Media", "Photos", "Videos", "Albums"])
+        self.filter_combo.addItems(["All Media", "Photos", "Videos"])
         self.filter_combo.currentIndexChanged.connect(self._apply_filter)
         toolbar.addWidget(self.filter_combo)
 
@@ -208,7 +206,7 @@ class DashboardView(QWidget):
         self.feed_layout.setAlignment(Qt.AlignTop)
 
         # Placeholder Banner when no items
-        self.empty_label = QLabel("🛰️ Interceptor Ready.\nListening for incoming secret photos, videos & albums in all chats...")
+        self.empty_label = QLabel("🛰️ Interceptor Ready.\nListening for incoming secret photos & videos in all chats...")
         self.empty_label.setAlignment(Qt.AlignCenter)
         self.empty_label.setStyleSheet("""
             color: #8b949e;
@@ -310,14 +308,12 @@ class DashboardView(QWidget):
 
         # Update stats
         m_type = media_data.get("type", "photo")
-        if m_type == "album":
-            self.card_albums.increment(1)
-        elif m_type == "video":
+        if m_type == "video":
             self.card_videos.increment(1)
         else:
             self.card_photos.increment(1)
 
-        self.card_total.increment(media_data.get("count", 1))
+        self.card_total.increment(1)
 
         # Re-render feed
         self._refresh_feed_cards()
@@ -343,8 +339,6 @@ class DashboardView(QWidget):
             if filter_type == "Photos" and m_type != "photo":
                 continue
             if filter_type == "Videos" and m_type != "video":
-                continue
-            if filter_type == "Albums" and m_type != "album":
                 continue
 
             # Filter by search query

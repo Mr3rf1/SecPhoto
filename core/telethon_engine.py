@@ -5,7 +5,7 @@ import shutil
 import sqlite3
 from datetime import datetime as dt
 from pathlib import Path
-from typing import Callable, Optional, List, Dict, Any
+from typing import Callable, Optional, Dict, Any
 
 from telethon import TelegramClient, events
 from telethon.errors import (
@@ -22,7 +22,6 @@ try:
 except ImportError:
     jdatetime = None
     pytz = None
-
 
 try:
     from colorama import Fore, init as colorama_init
@@ -44,7 +43,6 @@ class TelethonEngine:
         proxy: Optional[tuple] = None,
         save_local_backup: bool = True,
         local_backup_dir: str = "saved_media",
-        album_debounce_sec: float = 0.7,
         timezone_str: str = "Asia/Tehran"
     ):
         self.session_path = session_name_or_path
@@ -54,15 +52,10 @@ class TelethonEngine:
         self.save_local_backup = save_local_backup
         self.local_backup_dir = Path(local_backup_dir)
         self.local_backup_dir.mkdir(parents=True, exist_ok=True)
-        self.album_debounce_sec = album_debounce_sec
         self.timezone_str = timezone_str
 
         self.client: Optional[TelegramClient] = None
         self.is_monitoring: bool = False
-
-        # Album debouncing structures
-        self.album_buffer: Dict[tuple, List[Any]] = {}
-        self.album_tasks: Dict[tuple, asyncio.Task] = {}
 
         # Auth state storage
         self.phone_number: Optional[str] = None
@@ -198,7 +191,7 @@ class TelethonEngine:
                     code=clean_code
                 )
             
-            # Use 30s timeout so it never hangs indefinitely
+            # Use 30s timeout
             await asyncio.wait_for(sign_in_coro, timeout=30.0)
 
             me = await self.client.get_me()
@@ -275,22 +268,17 @@ class TelethonEngine:
                 pass
         return dt.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    def build_filename_stem(self, username: Optional[str], chat_id: int, timestamp_str: str, index: Optional[int] = None) -> str:
+    def build_filename_stem(self, username: Optional[str], chat_id: int, timestamp_str: str) -> str:
         """Build safe filename stem."""
         name = username if username else str(chat_id)
         name = re.sub(r'[\\/:*?"<>|]', '_', name)
-        stem = f"{name}_{timestamp_str}"
-        if index is not None:
-            stem = f"{stem}_{index}"
-        return stem
+        return f"{name}_{timestamp_str}"
 
-    def build_caption(self, message: Any, chat_id: int, username: Optional[str], is_reply: bool = False, is_album: bool = False) -> str:
+    def build_caption(self, message: Any, chat_id: int, username: Optional[str], is_reply: bool = False) -> str:
         """Build formatted HTML caption."""
         prefix = '┏' if not is_reply else '┣'
-        album_line = f"┣ᗩᒪᗷᑌᗰ ⤳ ✓\n" if is_album else ""
         caption = (
             f"{prefix}ᑕᕼᗩT Iᗪ ⤳ <a href=\"tg://user?id={chat_id}\">{chat_id}</a>\n"
-            f"{album_line}"
             f"┣ᑌՏᗴᖇᑎᗩᗰᗴ ⤳ {'@' + username if username else '✗'}\n"
             f"┣ᗰᗴՏՏᗩᘜᗴ Iᗪ ⤳ {message.id}\n"
             f"┣ᗪᗩTᗴ TIᗰᗴ ⤳ {self.get_formatted_timestamp()}\n"
@@ -308,75 +296,10 @@ class TelethonEngine:
             and bool(message.media.ttl_seconds)
         )
 
-    async def process_album(self, messages: List[Any], chat_title: str, chat_id: int, username: Optional[str], is_reply: bool = False):
-        """Download and forward album media."""
-        try:
-            file_paths = []
-            backup_paths = []
-            ts_str = dt.now().strftime('%Y%m%d_%H%M%S')
-            ttl_val = getattr(messages[0].media, 'ttl_seconds', None) if messages[0].media else None
-
-            for idx, msg in enumerate(messages):
-                if not msg.media:
-                    continue
-                ext = 'jpg' if (hasattr(msg.media, 'photo') and msg.media.photo) else 'mp4'
-                stem = self.build_filename_stem(username, chat_id, ts_str, index=idx)
-                temp_filename = f"{stem}.{ext}"
-
-                path = await self.client.download_media(msg.media, temp_filename)
-                if path:
-                    file_paths.append(path)
-                    if self.save_local_backup:
-                        dest = self.local_backup_dir / Path(path).name
-                        shutil.copy2(path, dest)
-                        backup_paths.append(str(dest))
-
-            if not file_paths:
-                return
-
-            caption = self.build_caption(messages[0], chat_id, username, is_reply=is_reply, is_album=True)
-            label = f"{chat_title}{' (replied message)' if is_reply else ''}"
-            self.log("info", f"Intercepted secret album ({len(file_paths)} items) from {label}. Saving to Saved Messages...")
-
-            file_handles = [open(p, 'rb') for p in file_paths]
-            try:
-                await self.client.send_file('me', file_handles, caption=caption, parse_mode='html')
-            finally:
-                for fh in file_handles:
-                    fh.close()
-
-            self.log("success", f"Saved secret album ({len(file_paths)} items) from {label} to your Telegram Saved Messages.")
-
-            # Notify GUI of intercepted media
-            if self.on_media_captured:
-                self.on_media_captured({
-                    "type": "album",
-                    "count": len(file_paths),
-                    "chat_title": chat_title,
-                    "chat_id": chat_id,
-                    "username": username,
-                    "is_reply": is_reply,
-                    "ttl_seconds": ttl_val,
-                    "timestamp": self.get_formatted_timestamp(),
-                    "local_files": backup_paths,
-                    "message_id": messages[0].id
-                })
-
-            # Cleanup temp files
-            for p in file_paths:
-                try:
-                    if os.path.exists(p):
-                        os.remove(p)
-                except Exception:
-                    pass
-
-        except Exception as e:
-            self.log("error", f"Failed to process album: {str(e)}")
-
     async def process_single_media(self, message: Any, chat_title: str, chat_id: int, username: Optional[str], is_reply: bool = False):
         """Process single self-destructing photo or video."""
         try:
-            caption = self.build_caption(message, chat_id, username, is_reply=is_reply, is_album=False)
+            caption = self.build_caption(message, chat_id, username, is_reply=is_reply)
             label = f"{chat_title}{' (replied message)' if is_reply else ''}"
             ts_str = dt.now().strftime('%Y%m%d_%H%M%S')
             stem = self.build_filename_stem(username, chat_id, ts_str)
@@ -430,36 +353,6 @@ class TelethonEngine:
         except Exception as e:
             self.log("error", f"Failed to process secret {media_type}: {str(e)}")
 
-    async def flush_album(self, key: tuple, chat_title: str, chat_id: int, username: Optional[str], is_reply: bool = False):
-        """Wait debounce interval then process grouped album messages."""
-        await asyncio.sleep(self.album_debounce_sec)
-        messages = self.album_buffer.pop(key, [])
-        self.album_tasks.pop(key, None)
-        if messages:
-            messages.sort(key=lambda m: m.id)
-            await self.process_album(messages, chat_title, chat_id, username, is_reply=is_reply)
-
-    async def handle_incoming_message(self, message: Any, chat_title: str, chat_id: int, username: Optional[str], is_reply: bool = False):
-        """Route message to single handler or album buffer."""
-        if not self.is_self_destructive(message):
-            return
-
-        grouped_id = getattr(message, 'grouped_id', None)
-        if grouped_id:
-            key = (chat_id, grouped_id)
-            if key not in self.album_buffer:
-                self.album_buffer[key] = []
-            self.album_buffer[key].append(message)
-
-            if key in self.album_tasks and not self.album_tasks[key].done():
-                self.album_tasks[key].cancel()
-
-            self.album_tasks[key] = asyncio.create_task(
-                self.flush_album(key, chat_title, chat_id, username, is_reply=is_reply)
-            )
-        else:
-            await self.process_single_media(message, chat_title, chat_id, username, is_reply=is_reply)
-
     def register_listeners(self):
         """Register Telethon event listeners."""
         @self.client.on(events.NewMessage)
@@ -474,15 +367,15 @@ class TelethonEngine:
                 username = None
 
             # Handle direct media
-            if event.message.media:
-                await self.handle_incoming_message(event.message, chat_title, event.chat_id, username, is_reply=False)
+            if event.message.media and self.is_self_destructive(event.message):
+                await self.process_single_media(event.message, chat_title, event.chat_id, username, is_reply=False)
 
             # Handle replied message media
             if event.message.reply_to_msg_id:
                 try:
                     replied_msg = await event.get_reply_message()
-                    if replied_msg and replied_msg.media:
-                        await self.handle_incoming_message(replied_msg, chat_title, event.chat_id, username, is_reply=True)
+                    if replied_msg and replied_msg.media and self.is_self_destructive(replied_msg):
+                        await self.process_single_media(replied_msg, chat_title, event.chat_id, username, is_reply=True)
                 except Exception as e:
                     self.log("error", f"Failed inspecting reply message: {e}")
 
@@ -496,7 +389,7 @@ class TelethonEngine:
         self.register_listeners()
         if self.on_status_changed:
             self.on_status_changed("listening")
-        self.log("success", "🚀 Interceptor engine ACTIVE. Listening for secret photos, videos & albums...")
+        self.log("success", "🚀 Interceptor engine ACTIVE. Listening for secret photos & videos...")
         await self.client.run_until_disconnected()
 
     async def stop_monitoring(self):

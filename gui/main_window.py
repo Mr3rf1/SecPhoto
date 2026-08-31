@@ -106,7 +106,6 @@ class MainWindow(QMainWindow):
             proxy=self._get_proxy_tuple(),
             save_local_backup=self.config.get("save_local_backup", True),
             local_backup_dir=self.config.get("local_backup_dir", str(APP_DIR / "saved_media")),
-            album_debounce_ms=self.config.get("album_debounce_ms", 700),
             timezone_str=self.config.get("timezone", "Asia/Tehran")
         )
         self.worker.request_login_code(phone)
@@ -133,7 +132,6 @@ class MainWindow(QMainWindow):
             proxy=self._get_proxy_tuple(),
             save_local_backup=self.config.get("save_local_backup", True),
             local_backup_dir=self.config.get("local_backup_dir", str(APP_DIR / "saved_media")),
-            album_debounce_ms=self.config.get("album_debounce_ms", 700),
             timezone_str=self.config.get("timezone", "Asia/Tehran")
         )
         self.worker.validate_session(self.current_session_name)
