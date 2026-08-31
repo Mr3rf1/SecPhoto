@@ -37,26 +37,43 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
 
+        # Check if saved session exists for instant dashboard display
+        self.has_saved_session = False
+        last_session = self.config.get("last_session")
+        if self.config.get("auto_login", True) and last_session:
+            session_file = APP_DIR / f"{last_session}.session"
+            alt_session_file = SESSIONS_DIR / f"{last_session}.session"
+            if session_file.exists() or alt_session_file.exists():
+                self.has_saved_session = True
+
         # Views
         self.auth_view = AuthView()
         self.dashboard_view = DashboardView()
 
         self.stack.addWidget(self.auth_view)       # Index 0
         self.stack.addWidget(self.dashboard_view)  # Index 1
-        self.stack.setCurrentIndex(0)
 
         # Status Bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("Ready. Select a login option to begin.")
+
+        if self.has_saved_session:
+            # Start DIRECTLY on Dashboard without showing login window
+            self.dashboard_view.set_user({"first_name": "Account", "username": ""}, self.current_session_name)
+            self.stack.setCurrentIndex(1)
+            self.status_bar.showMessage(f"Session: {self.current_session_name}.session")
+        else:
+            self.stack.setCurrentIndex(0)
+            self.status_bar.showMessage("Ready. Select a login option to begin.")
 
         # Wire UI Actions & Signals
         self.worker = TelethonWorker(self)
         self.worker.start_worker()
         self._connect_signals()
 
-        # Check for auto-login on startup
-        QTimer.singleShot(150, self._check_auto_login)
+        # Connect session in background
+        if self.has_saved_session:
+            QTimer.singleShot(50, self._check_auto_login)
 
     def _connect_signals(self):
         """Connect UI signals with worker slots and vice versa."""
@@ -151,9 +168,11 @@ class MainWindow(QMainWindow):
             self.user_info = user_info
             self._enter_dashboard()
         else:
+            self.stack.setCurrentIndex(0)
             self.auth_view.add_session_status_lbl.setText("❌ Session is expired or unauthorized. Please Login New.")
             self.auth_view.add_session_status_lbl.setStyleSheet("color: #f85149;")
             self.auth_view.btn_load_session.setEnabled(True)
+            self.status_bar.showMessage("Session unauthorized. Please log in.")
 
     def _check_auto_login(self):
         """Automatically log in with the last used session if available."""
