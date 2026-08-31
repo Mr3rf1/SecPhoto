@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from PySide6.QtCore import Qt, QThread, Slot
+from PySide6.QtCore import Qt, QThread, Slot, QTimer
 from PySide6.QtGui import QIcon, QCloseEvent
 from PySide6.QtWidgets import (
     QMainWindow, QStackedWidget, QStatusBar, QMessageBox, QApplication
@@ -13,7 +13,7 @@ from gui.auth_view import AuthView
 from gui.dashboard_view import DashboardView
 from gui.settings_dialog import SettingsDialog
 from core.worker import TelethonWorker
-from core.config import load_config, save_config, APP_DIR
+from core.config import load_config, save_config, APP_DIR, SESSIONS_DIR
 
 
 class MainWindow(QMainWindow):
@@ -27,11 +27,10 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(DARK_THEME)
 
         self.config = load_config()
-        self.current_session_name = "secret"
+        self.current_session_name = self.config.get("last_session", "secret")
         self.user_info: Dict[str, Any] = {}
 
         # Worker & Thread management
-        self.worker_thread: Optional[QThread] = None
         self.worker: Optional[TelethonWorker] = None
 
         # Root Stacked Widget
@@ -55,6 +54,9 @@ class MainWindow(QMainWindow):
         self.worker = TelethonWorker(self)
         self.worker.start_worker()
         self._connect_signals()
+
+        # Check for auto-login on startup
+        QTimer.singleShot(150, self._check_auto_login)
 
     def _connect_signals(self):
         """Connect UI signals with worker slots and vice versa."""
@@ -153,8 +155,37 @@ class MainWindow(QMainWindow):
             self.auth_view.add_session_status_lbl.setStyleSheet("color: #f85149;")
             self.auth_view.btn_load_session.setEnabled(True)
 
+    def _check_auto_login(self):
+        """Automatically log in with the last used session if available."""
+        if not self.config.get("auto_login", True):
+            return
+
+        last_session = self.config.get("last_session")
+        if not last_session:
+            return
+
+        # Check if session file exists
+        session_file = APP_DIR / f"{last_session}.session"
+        alt_session_file = SESSIONS_DIR / f"{last_session}.session"
+
+        target_path = None
+        if session_file.exists():
+            target_path = str(session_file.with_suffix(''))
+        elif alt_session_file.exists():
+            target_path = str(alt_session_file.with_suffix(''))
+
+        if target_path:
+            self.status_bar.showMessage(f"⚡ Auto-connecting with last session: {last_session}...")
+            api_id = int(self.config.get("api_id", 1234567))
+            api_hash = str(self.config.get("api_hash", "82bd7b4562f7ju24d182bdc38huj9352"))
+            self._handle_load_session(target_path, api_id, api_hash, "")
+
     def _enter_dashboard(self):
         """Transition from Auth View to Dashboard."""
+        self.config["last_session"] = self.current_session_name
+        self.config["auto_login"] = True
+        save_config(self.config)
+
         self.dashboard_view.set_user(self.user_info, self.current_session_name)
         self.stack.setCurrentIndex(1)
         self.status_bar.showMessage(f"Connected as {self.user_info.get('first_name', 'User')} (@{self.user_info.get('username', '')})")
@@ -162,6 +193,9 @@ class MainWindow(QMainWindow):
 
     def _handle_logout(self):
         """Disconnect and return to session selection screen."""
+        self.config["auto_login"] = False
+        save_config(self.config)
+
         self.worker.stop_monitoring()
         self.stack.setCurrentIndex(0)
         self.auth_view.refresh_saved_sessions_list()
