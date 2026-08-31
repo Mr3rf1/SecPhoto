@@ -52,18 +52,9 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("Ready. Select a login option to begin.")
 
         # Wire UI Actions & Signals
-        self._init_worker_thread()
+        self.worker = TelethonWorker(self)
+        self.worker.start_worker()
         self._connect_signals()
-
-    def _init_worker_thread(self):
-        """Initialize the background QThread and TelethonWorker."""
-        self.worker_thread = QThread()
-        self.worker = TelethonWorker()
-        self.worker.moveToThread(self.worker_thread)
-
-        # Connect thread startup to worker loop
-        self.worker_thread.started.connect(self.worker.start_event_loop)
-        self.worker_thread.start()
 
     def _connect_signals(self):
         """Connect UI signals with worker slots and vice versa."""
@@ -201,7 +192,4 @@ class MainWindow(QMainWindow):
         """Gracefully terminate Telethon client and event loop on exit."""
         if self.worker:
             self.worker.shutdown()
-        if self.worker_thread and self.worker_thread.isRunning():
-            self.worker_thread.quit()
-            self.worker_thread.wait(2000)
         event.accept()

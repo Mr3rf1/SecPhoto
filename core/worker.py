@@ -1,13 +1,14 @@
 import asyncio
 import threading
+import traceback
 from typing import Optional, Dict, Any
 
-from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot
 from core.telethon_engine import TelethonEngine
 
 
 class TelethonWorker(QObject):
-    """QObject worker managing an asyncio loop for Telethon inside a secondary QThread."""
+    """QObject worker managing an isolated background asyncio thread for Telethon."""
 
     # Signals emitted to the main GUI thread
     sig_log = Signal(str, str)  # (level, message)
@@ -22,7 +23,23 @@ class TelethonWorker(QObject):
         super().__init__(parent)
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.engine: Optional[TelethonEngine] = None
+        self._thread: Optional[threading.Thread] = None
         self._is_running = False
+
+    def start_worker(self):
+        """Start background asyncio event loop thread."""
+        if self._thread and self._thread.is_alive():
+            return
+
+        self._is_running = True
+        self._thread = threading.Thread(target=self._run_loop, daemon=True, name="TelethonAsyncLoop")
+        self._thread.start()
+
+    def _run_loop(self):
+        """Background thread worker loop."""
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
 
     def init_engine(
         self,
@@ -35,7 +52,7 @@ class TelethonWorker(QObject):
         album_debounce_ms: int = 700,
         timezone_str: str = "Asia/Tehran"
     ):
-        """Configure or re-create the internal TelethonEngine."""
+        """Configure internal TelethonEngine."""
         self.engine = TelethonEngine(
             session_name_or_path=session_name_or_path,
             api_id=api_id,
@@ -50,16 +67,17 @@ class TelethonWorker(QObject):
         self.engine.on_media_captured = lambda data: self.sig_media_captured.emit(data)
         self.engine.on_status_changed = lambda st: self.sig_status_changed.emit(st)
 
-    @Slot()
-    def start_event_loop(self):
-        """Entry point when the QThread starts."""
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self._is_running = True
-        self.loop.run_forever()
-
     def run_coroutine(self, coro):
         """Schedule a coroutine onto the worker's asyncio event loop safely."""
+        if not self.loop or not self.loop.is_running():
+            self.start_worker()
+            # Brief wait for loop to start
+            import time
+            for _ in range(20):
+                if self.loop and self.loop.is_running():
+                    break
+                time.sleep(0.05)
+
         if self.loop and self.loop.is_running():
             future = asyncio.run_coroutine_threadsafe(coro, self.loop)
 
@@ -67,10 +85,9 @@ class TelethonWorker(QObject):
                 try:
                     exc = fut.exception()
                     if exc:
-                        print(f" [ERROR] Coroutine raised exception: {exc}", flush=True)
-                        import traceback
+                        print(f" [ERROR] Coroutine exception: {exc}", flush=True)
                         traceback.print_exception(type(exc), exc, exc.__traceback__)
-                        self.sig_log.emit("error", f"Async task failed: {exc}")
+                        self.sig_log.emit("error", f"Task error: {exc}")
                         self.sig_auth_result.emit(False, False, str(exc), {})
                         self.sig_status_changed.emit("idle")
                 except Exception as err:
@@ -79,8 +96,8 @@ class TelethonWorker(QObject):
             future.add_done_callback(_on_future_done)
             return future
         else:
-            print(" [ERROR] Worker event loop is not running!", flush=True)
-            self.sig_log.emit("error", "Background event loop is not running.")
+            print(" [ERROR] Worker asyncio loop is not running!", flush=True)
+            self.sig_log.emit("error", "Async loop not running.")
             return None
 
     # Asynchronous actions callable from GUI via Slots
@@ -88,6 +105,8 @@ class TelethonWorker(QObject):
     @Slot(str)
     def request_login_code(self, phone: str):
         """Request verification code for new login."""
+        print(f" [DEBUG] request_login_code called for {phone}", flush=True)
+
         async def _task():
             self.sig_status_changed.emit("sending_code")
             try:
@@ -107,6 +126,8 @@ class TelethonWorker(QObject):
     @Slot(str)
     def submit_verification_code(self, code: str):
         """Submit verification code."""
+        print(f" [DEBUG] submit_verification_code called with code: {code}", flush=True)
+
         async def _task():
             self.sig_status_changed.emit("verifying_code")
             try:
@@ -128,6 +149,8 @@ class TelethonWorker(QObject):
     @Slot(str)
     def submit_2fa_password(self, password: str):
         """Submit 2FA password."""
+        print(f" [DEBUG] submit_2fa_password called", flush=True)
+
         async def _task():
             self.sig_status_changed.emit("verifying_2fa")
             try:
@@ -147,6 +170,8 @@ class TelethonWorker(QObject):
     @Slot(str)
     def validate_session(self, session_name: str):
         """Check if an existing session is authorized."""
+        print(f" [DEBUG] validate_session called for {session_name}", flush=True)
+
         async def _task():
             self.sig_status_changed.emit("checking_session")
             try:
@@ -166,6 +191,8 @@ class TelethonWorker(QObject):
     @Slot()
     def start_monitoring(self):
         """Start listening for self-destructing media."""
+        print(" [DEBUG] start_monitoring called", flush=True)
+
         async def _task():
             try:
                 await self.engine.start_monitoring()
@@ -178,6 +205,8 @@ class TelethonWorker(QObject):
     @Slot()
     def stop_monitoring(self):
         """Stop listening and disconnect."""
+        print(" [DEBUG] stop_monitoring called", flush=True)
+
         async def _task():
             try:
                 if self.engine:
