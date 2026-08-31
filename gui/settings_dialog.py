@@ -73,6 +73,11 @@ class SettingsDialog(QDialog):
         chat_row.addWidget(self.input_target_chat)
         dest_layout.addLayout(chat_row)
 
+        self.lbl_chat_help = QLabel("💡 Supports: 'saved messages' / 'me', @username, or numeric ID (-100... / ID) for any user, channel, or group.")
+        self.lbl_chat_help.setStyleSheet("font-size: 11px; margin-left: 20px; color: #8b949e;")
+        self.lbl_chat_help.setWordWrap(True)
+        dest_layout.addWidget(self.lbl_chat_help)
+
         self.lbl_chat_status = QLabel("")
         self.lbl_chat_status.setStyleSheet("font-size: 11px; margin-left: 20px; color: #8b949e;")
         dest_layout.addWidget(self.lbl_chat_status)
@@ -164,6 +169,7 @@ class SettingsDialog(QDialog):
         """Freeze or enable send-to-chat destination field."""
         self.input_target_chat.setEnabled(enabled)
         self.lbl_chat_label.setEnabled(enabled)
+        self.lbl_chat_help.setEnabled(enabled)
         if not enabled:
             self.input_target_chat.setStyleSheet("opacity: 0.5;")
             self.lbl_chat_status.setText("")
