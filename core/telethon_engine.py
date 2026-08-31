@@ -269,11 +269,27 @@ class TelethonEngine:
                 pass
         return dt.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    def build_filename_stem(self, username: Optional[str], chat_id: int, timestamp_str: str) -> str:
-        """Build safe filename stem."""
+    def build_filename_stem(self, username: Optional[str], chat_id: int, timestamp_str: str, message_id: Optional[int] = None) -> str:
+        """Build safe and unique filename stem."""
         name = username if username else str(chat_id)
         name = re.sub(r'[\\/:*?"<>|]', '_', name)
-        return f"{name}_{timestamp_str}"
+        msg_suffix = f"_msg{message_id}" if message_id is not None else ""
+        return f"{name}_{timestamp_str}{msg_suffix}"
+
+    def get_unique_path(self, target_dir: Path, filename: str) -> Path:
+        """Ensure the destination path does not overwrite an existing file."""
+        target_dir.mkdir(parents=True, exist_ok=True)
+        dest = target_dir / filename
+        if not dest.exists():
+            return dest
+
+        stem = dest.stem
+        suffix = dest.suffix
+        counter = 1
+        while dest.exists():
+            dest = target_dir / f"{stem}_{counter}{suffix}"
+            counter += 1
+        return dest
 
     def build_caption(self, message: Any, chat_id: int, username: Optional[str], is_reply: bool = False) -> str:
         """Build formatted HTML caption."""
@@ -303,7 +319,7 @@ class TelethonEngine:
             caption = self.build_caption(message, chat_id, username, is_reply=is_reply)
             label = f"{chat_title}{' (replied message)' if is_reply else ''}"
             ts_str = dt.now().strftime('%Y%m%d_%H%M%S')
-            stem = self.build_filename_stem(username, chat_id, ts_str)
+            stem = self.build_filename_stem(username, chat_id, ts_str, message_id=message.id)
             ttl_val = getattr(message.media, 'ttl_seconds', None)
 
             if hasattr(message.media, 'photo') and message.media.photo:
@@ -317,12 +333,13 @@ class TelethonEngine:
                 ext = 'dat'
 
             self.log("info", f"Intercepted secret {media_type} (TTL: {ttl_val}s) from {label}. Downloading...")
-            temp_path = await self.client.download_media(message.media, f"{stem}.{ext}")
+            temp_download_target = f"{stem}.{ext}"
+            temp_path = await self.client.download_media(message.media, temp_download_target)
 
             if temp_path:
                 backup_path = None
                 if self.save_local_backup:
-                    dest = self.local_backup_dir / Path(temp_path).name
+                    dest = self.get_unique_path(self.local_backup_dir, Path(temp_path).name)
                     shutil.copy2(temp_path, dest)
                     backup_path = str(dest)
 

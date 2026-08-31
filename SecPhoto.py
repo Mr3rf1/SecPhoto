@@ -126,12 +126,13 @@ async def main():
         await client.disconnect()
         return
 
-    def build_filename(username, chat_id, timestamp, index=None):
-        """Build a filename stem as USERNAME(or id)_TIMESTAMP[_index]"""
+    def build_filename(username, chat_id, timestamp, index=None, message_id=None):
+        """Build a filename stem as USERNAME(or id)_TIMESTAMP[_msgID][_index]"""
         name = username if username else str(chat_id)
         # Sanitize for filesystem
         name = re.sub(r'[\\/:*?"<>|]', '_', name)
-        stem = f"{name}_{timestamp}"
+        msg_part = f"_msg{message_id}" if message_id is not None else ""
+        stem = f"{name}_{timestamp}{msg_part}"
         if index is not None:
             stem = f"{stem}_{index}"
         return stem
@@ -197,7 +198,7 @@ async def main():
             label = f"{chat_title}{' (replied message)' if is_reply else ''}"
 
             ts = datetime.now(timezone('Asia/Tehran')).strftime('%Y%m%d_%H%M%S')
-            stem = build_filename(username, chat_id, ts)
+            stem = build_filename(username, chat_id, ts, message_id=message.id)
 
             if hasattr(message.media, 'photo') and message.media.photo:
                 print(f' {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Found self-destructive photo in {label}. Downloading...', end='')
