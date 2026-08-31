@@ -125,6 +125,8 @@ class MainWindow(QMainWindow):
             proxy=self._get_proxy_tuple(),
             save_local_backup=self.config.get("save_local_backup", True),
             local_backup_dir=self.config.get("local_backup_dir", str(APP_DIR / "saved_media")),
+            send_to_chat=self.config.get("send_to_chat", True),
+            target_chat=self.config.get("target_chat", "saved messages"),
             timezone_str=self.config.get("timezone", "Asia/Tehran")
         )
         self.worker.request_login_code(phone)
@@ -151,6 +153,8 @@ class MainWindow(QMainWindow):
             proxy=self._get_proxy_tuple(),
             save_local_backup=self.config.get("save_local_backup", True),
             local_backup_dir=self.config.get("local_backup_dir", str(APP_DIR / "saved_media")),
+            send_to_chat=self.config.get("send_to_chat", True),
+            target_chat=self.config.get("target_chat", "saved messages"),
             timezone_str=self.config.get("timezone", "Asia/Tehran")
         )
         self.worker.validate_session(self.current_session_name)
@@ -221,10 +225,20 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("Logged out.")
 
     def _open_settings_dialog(self):
-        """Open settings dialog."""
-        dlg = SettingsDialog(self)
+        """Open settings dialog with active worker validation and runtime sync."""
+        dlg = SettingsDialog(self, worker=self.worker)
         if dlg.exec():
-            self.dashboard_view.log_viewer.append_log("info", "Settings updated.")
+            self.config = load_config()
+            if self.worker:
+                self.worker.update_engine_settings(
+                    save_local_backup=self.config.get("save_local_backup", True),
+                    local_backup_dir=self.config.get("local_backup_dir", str(APP_DIR / "saved_media")),
+                    send_to_chat=self.config.get("send_to_chat", True),
+                    target_chat=self.config.get("target_chat", "saved messages"),
+                    timezone_str=self.config.get("timezone", "Asia/Tehran"),
+                    proxy=self._get_proxy_tuple()
+                )
+            self.dashboard_view.log_viewer.append_log("info", "Settings updated & synced with interceptor engine.")
 
     @Slot(str, str)
     def _on_worker_log(self, level: str, message: str):

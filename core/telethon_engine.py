@@ -43,6 +43,8 @@ class TelethonEngine:
         proxy: Optional[tuple] = None,
         save_local_backup: bool = True,
         local_backup_dir: str = "saved_media",
+        send_to_chat: bool = True,
+        target_chat: str = "saved messages",
         timezone_str: str = "Asia/Tehran"
     ):
         self.session_path = session_name_or_path
@@ -52,6 +54,8 @@ class TelethonEngine:
         self.save_local_backup = save_local_backup
         self.local_backup_dir = Path(local_backup_dir)
         self.local_backup_dir.mkdir(parents=True, exist_ok=True)
+        self.send_to_chat = send_to_chat
+        self.target_chat = str(target_chat or "saved messages").strip()
         self.timezone_str = timezone_str
 
         self.client: Optional[TelegramClient] = None
@@ -313,6 +317,48 @@ class TelethonEngine:
             and bool(message.media.ttl_seconds)
         )
 
+    def update_settings(
+        self,
+        save_local_backup: bool,
+        local_backup_dir: str,
+        send_to_chat: bool,
+        target_chat: str,
+        timezone_str: str,
+        proxy: Optional[tuple] = None
+    ):
+        """Update active engine runtime settings."""
+        self.save_local_backup = save_local_backup
+        self.local_backup_dir = Path(local_backup_dir)
+        self.local_backup_dir.mkdir(parents=True, exist_ok=True)
+        self.send_to_chat = send_to_chat
+        self.target_chat = str(target_chat or "saved messages").strip()
+        self.timezone_str = timezone_str
+        self.proxy = proxy
+
+    async def validate_target_chat(self, target: str) -> tuple[bool, str]:
+        """Verify if target chat is available and accessible in Telegram."""
+        t = str(target or "").strip()
+        if not t or t.lower() in ("saved messages", "me", "saved_messages"):
+            return True, "Saved Messages (Self Account)"
+
+        if not self.client:
+            return False, "Telegram client not initialized."
+
+        await self.connect_client()
+
+        try:
+            # Check if numeric chat ID (including negative IDs like -100...)
+            if (t.startswith("-") and t[1:].isdigit()) or t.isdigit():
+                entity_target = int(t)
+            else:
+                entity_target = t if t.startswith("@") else f"@{t}"
+
+            entity = await self.client.get_entity(entity_target)
+            title = getattr(entity, 'title', getattr(entity, 'first_name', str(t)))
+            return True, f"Accessible: {title}"
+        except Exception as e:
+            return False, f"Cannot access chat '{t}': {str(e)}"
+
     async def process_single_media(self, message: Any, chat_title: str, chat_id: int, username: Optional[str], is_reply: bool = False):
         """Process single self-destructing photo or video."""
         try:
@@ -343,10 +389,25 @@ class TelethonEngine:
                     shutil.copy2(temp_path, dest)
                     backup_path = str(dest)
 
-                with open(temp_path, 'rb') as file:
-                    await self.client.send_file('me', file, caption=caption, parse_mode='html')
+                # Send to Telegram chat if enabled
+                if self.send_to_chat:
+                    dest_chat = self.target_chat.strip() if self.target_chat else "me"
+                    if dest_chat.lower() in ("saved messages", "saved_messages", "me", ""):
+                        dest_target = 'me'
+                        dest_label = "Saved Messages"
+                    elif (dest_chat.startswith("-") and dest_chat[1:].isdigit()) or dest_chat.isdigit():
+                        dest_target = int(dest_chat)
+                        dest_label = f"Chat {dest_target}"
+                    else:
+                        dest_target = dest_chat if dest_chat.startswith("@") else f"@{dest_chat}"
+                        dest_label = dest_target
 
-                self.log("success", f"Secret {media_type} from {label} saved to Saved Messages!")
+                    try:
+                        with open(temp_path, 'rb') as file:
+                            await self.client.send_file(dest_target, file, caption=caption, parse_mode='html')
+                        self.log("success", f"Secret {media_type} from {label} sent to {dest_label}!")
+                    except Exception as send_err:
+                        self.log("error", f"Failed forwarding to {dest_label}: {str(send_err)}")
 
                 if self.on_media_captured:
                     self.on_media_captured({

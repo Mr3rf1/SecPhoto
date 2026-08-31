@@ -49,6 +49,8 @@ class TelethonWorker(QObject):
         proxy: Optional[tuple] = None,
         save_local_backup: bool = True,
         local_backup_dir: str = "saved_media",
+        send_to_chat: bool = True,
+        target_chat: str = "saved messages",
         timezone_str: str = "Asia/Tehran"
     ):
         """Configure internal TelethonEngine."""
@@ -59,11 +61,50 @@ class TelethonWorker(QObject):
             proxy=proxy,
             save_local_backup=save_local_backup,
             local_backup_dir=local_backup_dir,
+            send_to_chat=send_to_chat,
+            target_chat=target_chat,
             timezone_str=timezone_str
         )
         self.engine.on_log = lambda lvl, msg: self.sig_log.emit(lvl, msg)
         self.engine.on_media_captured = lambda data: self.sig_media_captured.emit(data)
         self.engine.on_status_changed = lambda st: self.sig_status_changed.emit(st)
+
+    def update_engine_settings(
+        self,
+        save_local_backup: bool,
+        local_backup_dir: str,
+        send_to_chat: bool,
+        target_chat: str,
+        timezone_str: str,
+        proxy: Optional[tuple] = None
+    ):
+        """Update runtime settings of active TelethonEngine."""
+        if self.engine:
+            self.engine.update_settings(
+                save_local_backup=save_local_backup,
+                local_backup_dir=local_backup_dir,
+                send_to_chat=send_to_chat,
+                target_chat=target_chat,
+                timezone_str=timezone_str,
+                proxy=proxy
+            )
+
+    def validate_target_chat(self, target: str, timeout: float = 6.0) -> tuple[bool, str]:
+        """Check if target chat is available and accessible using active client."""
+        if not self.engine:
+            return False, "Engine not configured."
+
+        if not self.loop or not self.loop.is_running():
+            return False, "Event loop not running."
+
+        future = asyncio.run_coroutine_threadsafe(
+            self.engine.validate_target_chat(target),
+            self.loop
+        )
+        try:
+            return future.result(timeout=timeout)
+        except Exception as e:
+            return False, f"Chat verification timed out or failed: {str(e)}"
 
     def run_coroutine(self, coro):
         """Schedule a coroutine onto the worker's asyncio event loop safely."""
