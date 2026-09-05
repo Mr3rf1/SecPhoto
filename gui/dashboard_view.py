@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 from typing import Dict, Any, List
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -14,6 +14,11 @@ from gui.components.stat_card import StatCard
 from gui.components.media_card import MediaCard
 from gui.components.log_viewer import LogViewer
 from core.config import load_config, APP_DIR
+
+# Repository & Donation links (customize as needed)
+GITHUB_REPO_URL = "https://github.com/Mr3rf1/SecPhoto"
+DONATE_URL = "https://github.com/Mr3rf1/Mr3rf1/blob/main/DONATION.md"
+
 
 
 class DashboardView(QWidget):
@@ -46,7 +51,8 @@ class DashboardView(QWidget):
 
         # 3. Main Splitter: Intercepted Media Feed (Left) & Terminal Console (Right)
         splitter = QSplitter(Qt.Horizontal)
-        splitter.setStyleSheet("QSplitter::handle { background: #30363d; width: 3px; }")
+        splitter.setChildrenCollapsible(False)
+        splitter.setStyleSheet("QSplitter::handle { background: #30363d; width: 2px; }")
 
         # Left Column: Media Feed
         feed_panel = self._build_media_feed_panel()
@@ -170,11 +176,12 @@ class DashboardView(QWidget):
         """Left panel with filter toolbar and scrollable list of media cards."""
         panel = QWidget()
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(10)
+        layout.setContentsMargins(0, 0, 16, 0)
+        layout.setSpacing(12)
 
         # Feed Toolbar: Title + Filter ComboBox + Search
         toolbar = QHBoxLayout()
+        toolbar.setSpacing(10)
         feed_title = QLabel("🖼️ Intercepted Media Feed")
         feed_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #ffffff;")
         toolbar.addWidget(feed_title)
@@ -187,7 +194,7 @@ class DashboardView(QWidget):
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 Search chat or @user...")
-        self.search_input.setFixedWidth(180)
+        self.search_input.setFixedWidth(190)
         self.search_input.textChanged.connect(self._apply_filter)
         toolbar.addWidget(self.search_input)
 
@@ -201,7 +208,7 @@ class DashboardView(QWidget):
 
         self.feed_container = QWidget()
         self.feed_layout = QVBoxLayout(self.feed_container)
-        self.feed_layout.setContentsMargins(0, 0, 8, 0)
+        self.feed_layout.setContentsMargins(0, 0, 6, 0)
         self.feed_layout.setSpacing(10)
         self.feed_layout.setAlignment(Qt.AlignTop)
 
@@ -219,7 +226,31 @@ class DashboardView(QWidget):
         self.feed_layout.addWidget(self.empty_label)
 
         self.scroll_area.setWidget(self.feed_container)
-        layout.addWidget(self.scroll_area)
+        layout.addWidget(self.scroll_area, 1)
+
+        # Support & Donation footer notice
+        footer_frame = QFrame()
+        footer_layout = QHBoxLayout(footer_frame)
+        footer_layout.setContentsMargins(10, 6, 10, 6)
+        footer_layout.setSpacing(6)
+
+        footer_label = QLabel(
+            f'⭐ If you find SecPhoto useful, please <a href="{GITHUB_REPO_URL}" style="color: #58a6ff; text-decoration: none; font-weight: 600;">Star the GitHub Repo</a> '
+            f'or <a href="{DONATE_URL}" style="color: #3fb950; text-decoration: none; font-weight: 600;">Donate</a> to support development!'
+        )
+        footer_label.setOpenExternalLinks(True)
+        footer_label.setAlignment(Qt.AlignCenter)
+        footer_label.setStyleSheet("color: #8b949e; font-size: 11px;")
+        footer_layout.addWidget(footer_label)
+
+        footer_frame.setStyleSheet("""
+            QFrame {
+                background-color: rgba(22, 27, 34, 0.7);
+                border: 1px solid #21262d;
+                border-radius: 8px;
+            }
+        """)
+        layout.addWidget(footer_frame)
 
         return panel
 
