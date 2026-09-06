@@ -94,3 +94,7 @@ Thumbs.db
 *.tmp
 *.bak
 *.swp
+
+scripts/
+*.json
+installer/
