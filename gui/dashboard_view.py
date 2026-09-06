@@ -1,10 +1,10 @@
 import os
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from PySide6.QtCore import Qt, Signal, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QPixmap, QPainter, QPainterPath
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QSplitter, QLineEdit, QComboBox, QSizePolicy
@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
 from gui.components.stat_card import StatCard
 from gui.components.media_card import MediaCard
 from gui.components.log_viewer import LogViewer
-from gui.styles import get_logo_pixmap, get_app_icon
 from core.config import load_config, APP_DIR
 
 # Repository & Donation links (customize as needed)
@@ -76,29 +75,17 @@ class DashboardView(QWidget):
         layout.setContentsMargins(18, 14, 18, 14)
         layout.setSpacing(14)
 
-        # Profile / App Brand Avatar Badge
-        avatar_label = QLabel()
-        logo_pix = get_logo_pixmap(size=44, radius=22)
-        if logo_pix:
-            avatar_label.setPixmap(logo_pix)
-            avatar_label.setFixedSize(44, 44)
-            avatar_label.setAlignment(Qt.AlignCenter)
-            avatar_label.setStyleSheet("""
-                border: 2px solid #58a6ff;
-                border-radius: 22px;
-                background-color: #21262d;
-            """)
-        else:
-            avatar_label.setText("🛡️")
-            avatar_label.setAlignment(Qt.AlignCenter)
-            avatar_label.setStyleSheet("""
-                background-color: #21262d;
-                border: 2px solid #58a6ff;
-                border-radius: 22px;
-                font-size: 22px;
-                padding: 8px;
-            """)
-        layout.addWidget(avatar_label)
+        # User Profile Avatar on left of account details
+        self.avatar_label = QLabel("👤")
+        self.avatar_label.setFixedSize(44, 44)
+        self.avatar_label.setAlignment(Qt.AlignCenter)
+        self.avatar_label.setStyleSheet("""
+            background-color: #21262d;
+            border: 2px solid #58a6ff;
+            border-radius: 22px;
+            font-size: 20px;
+        """)
+        layout.addWidget(self.avatar_label)
 
         # User Info Column
         user_info_layout = QVBoxLayout()
@@ -301,6 +288,7 @@ class DashboardView(QWidget):
         full_name = f"{first_name} {last_name}".strip()
         username = user_info.get("username", "")
         user_id = user_info.get("id", "-")
+        photo_path = user_info.get("photo_path")
 
         self.lbl_user_name.setText(full_name if full_name else "Telegram Account")
         user_meta_text = f"ID: {user_id}"
@@ -308,6 +296,61 @@ class DashboardView(QWidget):
             user_meta_text += f" | @{username}"
         self.lbl_user_meta.setText(user_meta_text)
         self.lbl_session_badge.setText(f"📱 Session: {session_name}")
+
+        self._update_user_avatar(photo_path, full_name)
+
+    def _update_user_avatar(self, photo_path: Optional[str], full_name: str):
+        """Render user's Telegram profile photo or fallback initials."""
+        if photo_path and os.path.exists(photo_path):
+            pix = QPixmap(photo_path)
+            if not pix.isNull():
+                size = 44
+                scaled = pix.scaled(
+                    size, size,
+                    Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                target = QPixmap(size, size)
+                target.fill(Qt.GlobalColor.transparent)
+                painter = QPainter(target)
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+                path = QPainterPath()
+                path.addRoundedRect(0, 0, size, size, size // 2, size // 2)
+                painter.setClipPath(path)
+                painter.drawPixmap(0, 0, scaled)
+                painter.end()
+
+                self.avatar_label.setPixmap(target)
+                self.avatar_label.setText("")
+                self.avatar_label.setStyleSheet("""
+                    border: 2px solid #58a6ff;
+                    border-radius: 22px;
+                    background-color: #21262d;
+                """)
+                return
+
+        # Fallback to user initials if available
+        initials = "".join([part[0].upper() for part in full_name.split() if part])[:2] if full_name else ""
+        if initials and initials != "TE":
+            self.avatar_label.setPixmap(QPixmap())
+            self.avatar_label.setText(initials)
+            self.avatar_label.setStyleSheet("""
+                background-color: #1f6feb;
+                color: #ffffff;
+                border: 2px solid #58a6ff;
+                border-radius: 22px;
+                font-size: 15px;
+                font-weight: 700;
+            """)
+        else:
+            self.avatar_label.setPixmap(QPixmap())
+            self.avatar_label.setText("👤")
+            self.avatar_label.setStyleSheet("""
+                background-color: #21262d;
+                border: 2px solid #58a6ff;
+                border-radius: 22px;
+                font-size: 20px;
+            """)
 
     def update_status(self, status: str):
         """Update monitor status badge and button state."""

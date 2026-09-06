@@ -137,18 +137,33 @@ class TelethonEngine:
                 self.log("error", f"Database error on connect: {e}")
                 raise
 
+    async def _fetch_user_avatar(self, user_entity: Any) -> Optional[str]:
+        """Download user's profile photo to sessions directory and return local path."""
+        try:
+            from core.config import SESSIONS_DIR
+            SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+            avatar_path = SESSIONS_DIR / f"{user_entity.id}_avatar.jpg"
+            downloaded = await self.client.download_profile_photo(user_entity, file=str(avatar_path))
+            if downloaded and os.path.exists(downloaded):
+                return str(downloaded)
+        except Exception as e:
+            self.log("info", f"Profile photo download skipped: {e}")
+        return None
+
     async def check_is_authorized(self) -> Optional[Dict[str, Any]]:
         """Check if current session is authorized. Return user info dict if authorized."""
         await self.connect_client()
         if await self.client.is_user_authorized():
             me = await self.client.get_me()
             self.log("success", f"Session authorized for: {me.first_name} (@{me.username or me.id})")
+            photo_path = await self._fetch_user_avatar(me)
             return {
                 "id": me.id,
                 "first_name": me.first_name or "",
                 "last_name": me.last_name or "",
                 "username": me.username or "",
-                "phone": me.phone or ""
+                "phone": me.phone or "",
+                "photo_path": photo_path
             }
         return None
 
@@ -201,6 +216,7 @@ class TelethonEngine:
 
             me = await self.client.get_me()
             self.log("success", f"Successfully logged in as {me.first_name} (@{me.username or me.id})")
+            photo_path = await self._fetch_user_avatar(me)
             return {
                 "success": True,
                 "requires_2fa": False,
@@ -209,7 +225,8 @@ class TelethonEngine:
                     "first_name": me.first_name or "",
                     "last_name": me.last_name or "",
                     "username": me.username or "",
-                    "phone": me.phone or ""
+                    "phone": me.phone or "",
+                    "photo_path": photo_path
                 }
             }
         except SessionPasswordNeededError:
@@ -243,6 +260,7 @@ class TelethonEngine:
             await asyncio.wait_for(self.client.sign_in(password=clean_pwd), timeout=30.0)
             me = await self.client.get_me()
             self.log("success", f"Successfully authenticated with 2FA as {me.first_name}!")
+            photo_path = await self._fetch_user_avatar(me)
             return {
                 "success": True,
                 "user": {
@@ -250,7 +268,8 @@ class TelethonEngine:
                     "first_name": me.first_name or "",
                     "last_name": me.last_name or "",
                     "username": me.username or "",
-                    "phone": me.phone or ""
+                    "phone": me.phone or "",
+                    "photo_path": photo_path
                 }
             }
         except PasswordHashInvalidError:
