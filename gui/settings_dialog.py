@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QMessageBox, QApplication
 )
 from core.config import load_config, save_config, APP_DIR
+from gui.styles import get_app_icon
 
 
 class SettingsDialog(QDialog):
@@ -16,6 +17,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.worker = worker
         self.setWindowTitle("⚙️ SecPhoto Settings")
+        self.setWindowIcon(get_app_icon())
         self.setFixedWidth(520)
         self.config = load_config()
 

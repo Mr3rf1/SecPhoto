@@ -1,4 +1,43 @@
-"""Modern dark styling for SecPhoto PySide6 application."""
+from pathlib import Path
+from typing import Optional
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon, QPixmap, QPainter, QPainterPath
+from core.config import APP_DIR
+
+
+def get_app_icon() -> QIcon:
+    """Return QIcon of application logo for title bars, taskbars and windows."""
+    for name in ["logo.ico", "logo.jpg", "secphoto.jpg"]:
+        p = APP_DIR / name
+        if p.exists():
+            return QIcon(str(p))
+    return QIcon()
+
+
+def get_logo_pixmap(size: int = 44, radius: int = 12) -> Optional[QPixmap]:
+    """Return a high-quality anti-aliased rounded QPixmap of the logo for UI headers and app bars."""
+    for name in ["logo.jpg", "logo.ico", "secphoto.jpg"]:
+        p = APP_DIR / name
+        if p.exists():
+            orig = QPixmap(str(p))
+            if not orig.isNull():
+                scaled = orig.scaled(
+                    size, size,
+                    Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                target = QPixmap(size, size)
+                target.fill(Qt.GlobalColor.transparent)
+                painter = QPainter(target)
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+                path = QPainterPath()
+                path.addRoundedRect(0, 0, size, size, radius, radius)
+                painter.setClipPath(path)
+                painter.drawPixmap(0, 0, scaled)
+                painter.end()
+                return target
+    return None
+
 
 DARK_THEME = """
 /* Global Application Styles */

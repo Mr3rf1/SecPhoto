@@ -9,6 +9,7 @@ if PROJECT_ROOT not in sys.path:
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 from gui.main_window import MainWindow
+from gui.styles import get_app_icon
 
 
 def main():
@@ -20,6 +21,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("SecPhoto")
     app.setOrganizationName("Mr3rf1")
+    app.setWindowIcon(get_app_icon())
 
     window = MainWindow()
     window.show()

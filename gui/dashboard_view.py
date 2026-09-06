@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from gui.components.stat_card import StatCard
 from gui.components.media_card import MediaCard
 from gui.components.log_viewer import LogViewer
+from gui.styles import get_logo_pixmap, get_app_icon
 from core.config import load_config, APP_DIR
 
 # Repository & Donation links (customize as needed)
@@ -75,15 +76,28 @@ class DashboardView(QWidget):
         layout.setContentsMargins(18, 14, 18, 14)
         layout.setSpacing(14)
 
-        # Profile Avatar / Icon
-        avatar_label = QLabel("🛡️")
-        avatar_label.setStyleSheet("""
-            background-color: #21262d;
-            border: 2px solid #58a6ff;
-            border-radius: 22px;
-            font-size: 22px;
-            padding: 8px;
-        """)
+        # Profile / App Brand Avatar Badge
+        avatar_label = QLabel()
+        logo_pix = get_logo_pixmap(size=44, radius=22)
+        if logo_pix:
+            avatar_label.setPixmap(logo_pix)
+            avatar_label.setFixedSize(44, 44)
+            avatar_label.setAlignment(Qt.AlignCenter)
+            avatar_label.setStyleSheet("""
+                border: 2px solid #58a6ff;
+                border-radius: 22px;
+                background-color: #21262d;
+            """)
+        else:
+            avatar_label.setText("🛡️")
+            avatar_label.setAlignment(Qt.AlignCenter)
+            avatar_label.setStyleSheet("""
+                background-color: #21262d;
+                border: 2px solid #58a6ff;
+                border-radius: 22px;
+                font-size: 22px;
+                padding: 8px;
+            """)
         layout.addWidget(avatar_label)
 
         # User Info Column

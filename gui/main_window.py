@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QStackedWidget, QStatusBar, QMessageBox, QApplication
 )
 
-from gui.styles import DARK_THEME
+from gui.styles import DARK_THEME, get_app_icon
 from gui.auth_view import AuthView
 from gui.dashboard_view import DashboardView
 from gui.settings_dialog import SettingsDialog
@@ -22,6 +22,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SecPhoto - Telegram Self-Destructive Media Interceptor")
+        self.setWindowIcon(get_app_icon())
         self.resize(1100, 720)
         self.setMinimumSize(880, 600)
         self.setStyleSheet(DARK_THEME)
