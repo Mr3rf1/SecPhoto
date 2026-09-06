@@ -21,6 +21,13 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        if sys.platform == "win32":
+            import ctypes
+            try:
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Mr3rf1.SecPhoto.Interceptor.1.0")
+            except Exception:
+                pass
+
         self.setWindowTitle("SecPhoto - Telegram Self-Destructive Media Interceptor")
         self.setWindowIcon(get_app_icon())
         self.resize(1100, 720)
@@ -256,6 +263,9 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent):
         """Gracefully terminate Telethon client and event loop on exit."""
-        if self.worker:
-            self.worker.shutdown()
+        try:
+            if self.worker:
+                self.worker.shutdown()
+        except Exception:
+            pass
         event.accept()
