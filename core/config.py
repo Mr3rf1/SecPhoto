@@ -3,11 +3,18 @@ import os
 from pathlib import Path
 from typing import Dict, Any, List
 
+import sys
+
 # Default API Credentials (can be overridden by user in GUI)
 DEFAULT_API_ID = 1234567
 DEFAULT_API_HASH = "82bd7b4562f7ju24d182bdc38huj9352"
 
-APP_DIR = Path(__file__).resolve().parent.parent
+# Determine application directory (works for source scripts and PyInstaller binaries)
+if getattr(sys, 'frozen', False):
+    APP_DIR = Path(sys.executable).resolve().parent
+else:
+    APP_DIR = Path(__file__).resolve().parent.parent
+
 CONFIG_FILE = APP_DIR / "secphoto_config.json"
 SESSIONS_DIR = APP_DIR / "sessions"
 

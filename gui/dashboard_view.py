@@ -229,10 +229,10 @@ class DashboardView(QWidget):
         layout.addWidget(self.scroll_area, 1)
 
         # Support & Donation footer notice
-        footer_frame = QFrame()
-        footer_layout = QHBoxLayout(footer_frame)
-        footer_layout.setContentsMargins(10, 6, 10, 6)
-        footer_layout.setSpacing(6)
+        self.footer_frame = QFrame()
+        footer_layout = QHBoxLayout(self.footer_frame)
+        footer_layout.setContentsMargins(10, 5, 8, 5)
+        footer_layout.setSpacing(8)
 
         footer_label = QLabel(
             f'⭐ If you find SecPhoto useful, please <a href="{GITHUB_REPO_URL}" style="color: #58a6ff; text-decoration: none; font-weight: 600;">Star the GitHub Repo</a> '
@@ -241,16 +241,39 @@ class DashboardView(QWidget):
         footer_label.setOpenExternalLinks(True)
         footer_label.setAlignment(Qt.AlignCenter)
         footer_label.setStyleSheet("color: #8b949e; font-size: 11px;")
-        footer_layout.addWidget(footer_label)
+        footer_layout.addWidget(footer_label, 1)
 
-        footer_frame.setStyleSheet("""
+        btn_close_footer = QPushButton("✕")
+        btn_close_footer.setToolTip("Dismiss")
+        btn_close_footer.setCursor(Qt.PointingHandCursor)
+        btn_close_footer.setFixedSize(18, 18)
+        btn_close_footer.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #8b949e;
+                border: none;
+                font-size: 11px;
+                font-weight: bold;
+                padding: 0;
+                margin: 0;
+            }
+            QPushButton:hover {
+                color: #f85149;
+                background-color: rgba(248, 81, 73, 0.15);
+                border-radius: 9px;
+            }
+        """)
+        btn_close_footer.clicked.connect(lambda: self.footer_frame.hide())
+        footer_layout.addWidget(btn_close_footer)
+
+        self.footer_frame.setStyleSheet("""
             QFrame {
                 background-color: rgba(22, 27, 34, 0.7);
                 border: 1px solid #21262d;
                 border-radius: 8px;
             }
         """)
-        layout.addWidget(footer_frame)
+        layout.addWidget(self.footer_frame)
 
         return panel
 

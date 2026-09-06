@@ -95,7 +95,7 @@ After creating the application, you'll see:
 
 To launch the modern graphical user interface:
 ```bash
-python run_gui.py
+python gui/run_gui.py
 ```
 
 **GUI Features:**
@@ -110,10 +110,30 @@ python run_gui.py
 
 ### 💻 CLI / Terminal Mode
 
-You can also run directly in the terminal:
+You can also run the core CLI tool directly from the root directory:
 ```bash
 python SecPhoto.py
 ```
+
+## 📦 Building Executables & Installers
+
+### 🪟 Windows (Portable .exe & Setup Installer)
+Run the Windows build script to create both a standalone portable `.exe` and a distribution bundle:
+```bash
+python scripts/build_windows.py
+```
+- **Portable .exe**: Located in `dist/SecPhoto_Portable.exe` (run anywhere without installation).
+- **Windows Installer**: Compiled using Inno Setup from `installer/SecPhoto_Installer.iss` to produce `dist_installer/SecPhoto_Setup.exe`.
+
+### 🐧 Linux (Standalone Binary)
+Make the build script executable and run on Linux:
+```bash
+chmod +x scripts/build_linux.sh
+./scripts/build_linux.sh
+```
+- **Standalone Binary**: `dist/SecPhoto`
+- **Direct Launcher**: `dist/run.sh`
+- **Desktop Entry**: `dist/SecPhoto.desktop`
 
 ### Reply-to-Save Feature
 

@@ -4,9 +4,15 @@ __pycache__/
 *$py.class
 *.so
 .Python
+# Builds & Packaging
 build/
-develop-eggs/
 dist/
+dist_installer/
+Output/
+*.spec
+*.exe
+_internal/
+develop-eggs/
 downloads/
 eggs/
 .eggs/
@@ -19,6 +25,20 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Logo & Generated Icon Assets
+logo.jpg
+logo.ico
+*.ico
+secphoto.jpg
+
+# App Runtime Data, Sessions & Saved Media
+saved_media/
+sessions/
+*.session
+*.session-journal
+secphoto_config.json
+
 
 # Virtual Environment
 venv/
