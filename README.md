@@ -91,12 +91,33 @@ After creating the application, you'll see:
 
 ## 📖 Usage
 
+### Saving Deleted Messages
+
+When Telegram reports deleted messages, SecPhoto sends one count-only notification to Saved Messages. It identifies the chat and number of deleted messages. Telegram does not provide the identity of the user who deleted them. The private archive channel remains responsible for preserving the deleted content.
+
 ### Basic Usage
 
 1. **Start the tool simply**
    ```bash
    python3 SecPhoto.py
    ```
+
+### Private Chat Archive
+
+The Docker version creates a private `SecPhoto Commands` channel on first startup. Send commands there:
+
+```text
+/archive @username-or-chat-id
+/archive-adopt <archive-channel-id> <source-chat>
+/archive-status
+/archive-stop
+```
+
+`/archive` creates a private channel, copies the source chat's existing messages in chronological order, and mirrors new messages afterward. If a source message is deleted, the archive retains the copy and adds a deletion notice. The command and archive channel IDs are stored in `/app/data/archive_state.json`, so restarts reuse them. Set `TG_COMMAND_CHANNEL_ID` when an existing private command channel should be used instead.
+
+For an older archive channel created outside SecPhoto, use `/archive-adopt` with both channel IDs. Telegram does not expose the original source chat for an arbitrary channel, so the source must be supplied explicitly; the existing messages are retained and only future source messages are mirrored.
+
+The logged-in account must be able to read the source chat. Protected messages that cannot be forwarded are copied by downloading and uploading their media when Telegram permits it; some service messages and restricted media cannot be copied.
 
 ### Reply-to-Save Feature
 

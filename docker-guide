@@ -1,0 +1,15 @@
+Build the image for Linux amd64 (secphoto.tar already compiled)
+docker build --platform linux/amd64 -t secphoto .
+docker save -o secphoto.tar secphoto
+
+load the docker image
+docker load -i telegram-bot.tar
+
+create stack in portainer
+add credentials to container env
+stop container
+
+sudo docker start -ai telegram-secphoto
+
+leave shell:
+Ctrl+P then Ctrl+Q
