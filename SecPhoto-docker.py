@@ -1,7 +1,8 @@
-# t.me/Mr3rf1
 # https://github.com/Dr-Muh/SecPhoto
 
 import os
+import json
+from pathlib import Path
 
 api_id = int(os.environ["TG_API_ID"])
 api_hash = os.environ["TG_API_HASH"]
@@ -12,6 +13,9 @@ excluded_users = {
     if entry.strip()
 }
 timezone_name = os.environ.get("TZ", "Europe/Berlin")
+archive_state_path = Path(
+    os.environ.get("TG_ARCHIVE_STATE_PATH", "/app/data/archive_state.json")
+)
 
 async def main():
     try:
@@ -26,6 +30,8 @@ async def main():
         from datetime import datetime
         from zoneinfo import ZoneInfo
         import sqlite3
+        from telethon.tl.functions.channels import CreateChannelRequest
+        from telethon.utils import get_peer_id
     except ImportError:
         print(' [!] Please install dependencies~> python3 -m pip install -r requirements.txt')
         exit(0)
@@ -130,6 +136,195 @@ async def main():
         print('Authentication failed. Exiting...')
         await client.disconnect()
         return
+
+    def load_archive_state():
+        if not archive_state_path.exists():
+            return {}
+        try:
+            return json.loads(archive_state_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"Could not read archive state: {str(e)}")
+            return {}
+
+    def save_archive_state(state):
+        archive_state_path.parent.mkdir(parents=True, exist_ok=True)
+        archive_state_path.write_text(
+            json.dumps(state, ensure_ascii=True, indent=2), encoding="utf-8"
+        )
+
+    archive_state = load_archive_state()
+    archive_lock = asyncio.Lock()
+
+    async def create_private_channel(title, about):
+        result = await client(CreateChannelRequest(
+            title=title,
+            about=about,
+            broadcast=True,
+            megagroup=False,
+        ))
+        return result.chats[0]
+
+    async def discover_archive_state():
+        """Recover state from a metadata message in an existing archive channel."""
+        if archive_state.get("archive"):
+            return
+        async for dialog in client.iter_dialogs():
+            channel = dialog.entity
+            title = getattr(channel, "title", "")
+            if not getattr(channel, "broadcast", False) or not title.startswith("SecPhoto Archive - "):
+                continue
+            async for message in client.iter_messages(channel, limit=20):
+                marker = message.raw_text or ""
+                if marker.startswith("[SecPhoto metadata] source_id="):
+                    source_id = marker.split("source_id=", 1)[1].split(" ", 1)[0]
+                    archive_state["archive"] = {
+                        "source_id": int(source_id),
+                        "archive_id": get_peer_id(channel),
+                        "source": marker.split(" source=", 1)[-1],
+                    }
+                    save_archive_state(archive_state)
+                    print(f"Recovered archive state from {title}")
+                    return
+
+    async def get_command_channel():
+        channel_id = os.environ.get("TG_COMMAND_CHANNEL_ID")
+        if channel_id:
+            return await client.get_entity(int(channel_id))
+
+        saved_id = archive_state.get("command_channel_id")
+        if saved_id:
+            try:
+                return await client.get_entity(int(saved_id))
+            except Exception:
+                print("Saved command channel is unavailable; creating a new one")
+
+        channel = await create_private_channel(
+            "SecPhoto Commands",
+            "Private command channel for SecPhoto chat archives.",
+        )
+        archive_state["command_channel_id"] = get_peer_id(channel)
+        save_archive_state(archive_state)
+        print(f"Created private command channel: {get_peer_id(channel)}")
+        return channel
+
+    command_channel = await get_command_channel()
+    command_channel_id = get_peer_id(command_channel)
+    await discover_archive_state()
+
+    def archive_config():
+        return archive_state.get("archive")
+
+    async def copy_message_to_archive(message, source, archive_channel):
+        """Copy one message, falling back when forwarding is restricted."""
+        try:
+            copied = await client.forward_messages(
+                archive_channel, message, from_peer=source
+            )
+            return copied[0] if isinstance(copied, list) else copied
+        except Exception:
+            temp_dir = Path("/app/data/archive_tmp")
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            temp_path = await client.download_media(message, str(temp_dir)) if message.media else None
+            try:
+                if temp_path:
+                    return await client.send_file(
+                        archive_channel, temp_path, caption=message.message or ""
+                    )
+                if message.message:
+                    return await client.send_message(archive_channel, message.message)
+                return await client.send_message(archive_channel, "[Message without text]")
+            finally:
+                if temp_path and os.path.exists(temp_path):
+                    os.remove(temp_path)
+
+    async def backfill_archive(source, archive_channel):
+        count = 0
+        last_message_id = archive_config().get("last_source_message_id", 0)
+        async for message in client.iter_messages(source, reverse=True):
+            if message.id <= last_message_id:
+                continue
+            await copy_message_to_archive(message, source, archive_channel)
+            archive_state["archive"]["last_source_message_id"] = message.id
+            count += 1
+            if count % 100 == 0:
+                save_archive_state(archive_state)
+                print(f"Archived {count} messages...")
+        save_archive_state(archive_state)
+        return count
+
+    async def create_or_sync_archive(chat_spec):
+        async with archive_lock:
+            source = await client.get_entity(chat_spec)
+            source_id = get_peer_id(source)
+            existing = archive_config()
+            if existing and existing.get("source_id") == source_id:
+                archive_channel = await client.get_entity(int(existing["archive_id"]))
+                await client.send_message(command_channel, f"Syncing existing archive for {chat_spec}...")
+            else:
+                title = getattr(source, "title", None) or getattr(source, "first_name", None) or str(chat_spec)
+                archive_channel = await create_private_channel(
+                    f"SecPhoto Archive - {title}"[:128],
+                    f"Private copy of {title} created by SecPhoto.",
+                )
+                archive_state["archive"] = {
+                    "source_id": source_id,
+                    "archive_id": get_peer_id(archive_channel),
+                    "source": str(chat_spec),
+                    "last_source_message_id": 0,
+                }
+                save_archive_state(archive_state)
+                await client.send_message(
+                    archive_channel,
+                    f"[SecPhoto metadata] source_id={source_id} source={chat_spec}",
+                )
+
+            count = await backfill_archive(source, archive_channel)
+            await client.send_message(
+                command_channel,
+                f"Archive ready for {chat_spec}. Copied {count} new messages. "
+                "New messages will be mirrored automatically.",
+            )
+
+    async def handle_command(event):
+        command = (event.raw_text or "").strip()
+        if command.startswith("/archive "):
+            try:
+                await create_or_sync_archive(command.split(None, 1)[1].strip())
+            except Exception as e:
+                await client.send_message(command_channel, f"Archive failed: {str(e)}")
+        elif command.startswith("/archive-adopt "):
+            try:
+                archive_spec, source_spec = command.split(None, 2)[1:]
+                source = await client.get_entity(source_spec)
+                archive_channel = await client.get_entity(archive_spec)
+                latest_source = await client.get_messages(source, limit=1)
+                archive_state["archive"] = {
+                    "source_id": get_peer_id(source),
+                    "archive_id": get_peer_id(archive_channel),
+                    "source": str(source_spec),
+                    "last_source_message_id": latest_source[0].id if latest_source else 0,
+                }
+                save_archive_state(archive_state)
+                await client.send_message(
+                    command_channel,
+                    "Existing archive adopted. New source messages will be mirrored.",
+                )
+            except Exception as e:
+                await client.send_message(command_channel, f"Adoption failed: {str(e)}")
+        elif command == "/archive-status":
+            config = archive_config()
+            if config:
+                await client.send_message(
+                    command_channel,
+                    f"Source: {config['source']}\nArchive channel ID: {config['archive_id']}\n"
+                    f"Last source message: {config.get('last_source_message_id', 0)}",
+                )
+            else:
+                await client.send_message(command_channel, "No archive configured. Use /archive <chat>.")
+        elif command == "/archive-stop":
+            archive_state.pop("archive", None)
+            save_archive_state(archive_state)
+            await client.send_message(command_channel, "Live archive mirroring stopped.")
 
     def build_filename(username, chat_id, timestamp, index=None):
         """Build a filename stem as USERNAME(or id)_TIMESTAMP[_index]"""
@@ -271,6 +466,10 @@ async def main():
 
     @client.on(events.NewMessage)
     async def handler(event):
+        if event.chat_id == command_channel_id:
+            await handle_command(event)
+            return
+
         try:
             chat = await event.get_chat()
             chat_title = getattr(chat, 'title', getattr(chat, 'first_name', 'Unknown'))
@@ -282,6 +481,14 @@ async def main():
         if is_excluded_user(event.chat_id, username):
             print(f'Skipping excluded user or chat: {chat_title}')
             return
+
+        config = archive_config()
+        if config and event.chat_id == config["source_id"]:
+            try:
+                archive_channel = await client.get_entity(int(config["archive_id"]))
+                await copy_message_to_archive(event.message, chat, archive_channel)
+            except Exception as e:
+                print(f"Failed to mirror message {event.message.id}: {str(e)}")
 
         # Handle current message (single or album)
         if event.message.media:
@@ -295,6 +502,39 @@ async def main():
                     await handle_message(replied_message, chat_title, event.chat_id, username, is_reply=True)
             except Exception as e:
                 print(f'Failed to process replied message: {str(e)}')
+
+    @client.on(events.MessageDeleted)
+    async def deleted_handler(event):
+        """Notify Saved Messages when Telegram reports deleted messages."""
+        if event.chat_id is None:
+            return
+
+        deleted_count = len(event.deleted_ids)
+        try:
+            chat = await event.get_chat()
+            chat_title = getattr(chat, "title", None) or getattr(chat, "first_name", None) or str(event.chat_id)
+        except Exception:
+            chat_title = str(event.chat_id)
+
+        await client.send_message(
+            "me",
+            f"{deleted_count} message{'s' if deleted_count != 1 else ''} deleted in {chat_title}. "
+            "Telegram did not provide the deleting user's identity.",
+        )
+        print(f"Notified Saved Messages about {deleted_count} deleted message(s) in {chat_title}")
+
+        config = archive_config()
+        if config and event.chat_id == config["source_id"]:
+            try:
+                archive_channel = await client.get_entity(int(config["archive_id"]))
+                for message_id in event.deleted_ids:
+                    await client.send_message(
+                        archive_channel,
+                        f"Source message {message_id} was deleted. The archived copy is retained.",
+                    )
+            except Exception as e:
+                print(f"Failed to record deleted archive messages: {str(e)}")
+
 
     await client.run_until_disconnected()
 

@@ -11,4 +11,6 @@ services:
       - TG_API_ID=${TG_API_ID}
       - TG_API_HASH=${TG_API_HASH}
       - TG_EXCLUDED_USERS=${TG_EXCLUDED_USERS}
+      - TG_ARCHIVE_STATE_PATH=/app/data/archive_state.json
+      - TG_COMMAND_CHANNEL_ID=${TG_COMMAND_CHANNEL_ID:-}
       - TZ=Europe/Berlin
