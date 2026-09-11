@@ -3,7 +3,6 @@
 import os
 import json
 from pathlib import Path
-
 api_id = int(os.environ["TG_API_ID"])
 api_hash = os.environ["TG_API_HASH"]
 excluded_users_raw = os.environ.get("TG_EXCLUDED_USERS", "")
@@ -20,7 +19,7 @@ archive_state_path = Path(
 async def main():
     try:
         from telethon import TelegramClient, events
-        from telethon.errors import SessionPasswordNeededError
+        from telethon.errors import FloodWaitError, SessionPasswordNeededError
         from socks import SOCKS5
         from argparse import ArgumentParser
         import os
@@ -31,6 +30,7 @@ async def main():
         from zoneinfo import ZoneInfo
         import sqlite3
         from telethon.tl.functions.channels import CreateChannelRequest
+        from telethon.tl.types import User
         from telethon.utils import get_peer_id
     except ImportError:
         print(' [!] Please install dependencies~> python3 -m pip install -r requirements.txt')
@@ -211,6 +211,14 @@ async def main():
     command_channel_id = get_peer_id(command_channel)
     await discover_archive_state()
 
+    async def notify_command(text):
+        try:
+            await client.send_message(command_channel, text)
+        except FloodWaitError as e:
+            print(f"Could not notify command channel; flood wait is {e.seconds} seconds")
+        except Exception as e:
+            print(f"Could not notify command channel: {e}")
+
     def archive_config():
         return archive_state.get("archive")
 
@@ -221,6 +229,8 @@ async def main():
                 archive_channel, message, from_peer=source
             )
             return copied[0] if isinstance(copied, list) else copied
+        except FloodWaitError:
+            raise
         except Exception:
             temp_dir = Path("/app/data/archive_tmp")
             temp_dir.mkdir(parents=True, exist_ok=True)
@@ -243,14 +253,25 @@ async def main():
         async for message in client.iter_messages(source, reverse=True):
             if message.id <= last_message_id:
                 continue
-            await copy_message_to_archive(message, source, archive_channel)
+            try:
+                await copy_message_to_archive(message, source, archive_channel)
+            except FloodWaitError as e:
+                save_archive_state(archive_state)
+                print(
+                    f"Telegram flood wait: pause for {e.seconds} seconds. "
+                    "Archive progress was saved; run the archive command again later."
+                )
+                return count, True
             archive_state["archive"]["last_source_message_id"] = message.id
+            save_archive_state(archive_state)
             count += 1
             if count % 100 == 0:
-                save_archive_state(archive_state)
                 print(f"Archived {count} messages...")
-        save_archive_state(archive_state)
-        return count
+        return count, False
+
+    async def report_command_error(message):
+        print(f"Command failed: {message}")
+        await notify_command(message)
 
     async def create_or_sync_archive(chat_spec):
         async with archive_lock:
@@ -259,7 +280,7 @@ async def main():
             existing = archive_config()
             if existing and existing.get("source_id") == source_id:
                 archive_channel = await client.get_entity(int(existing["archive_id"]))
-                await client.send_message(command_channel, f"Syncing existing archive for {chat_spec}...")
+                await notify_command(f"Syncing existing archive for {chat_spec}...")
             else:
                 title = getattr(source, "title", None) or getattr(source, "first_name", None) or str(chat_spec)
                 archive_channel = await create_private_channel(
@@ -278,11 +299,13 @@ async def main():
                     f"[SecPhoto metadata] source_id={source_id} source={chat_spec}",
                 )
 
-            count = await backfill_archive(source, archive_channel)
-            await client.send_message(
-                command_channel,
+            count, paused = await backfill_archive(source, archive_channel)
+            if paused:
+                print(f"Archive paused after copying {count} messages. Run /archive {chat_spec} later to resume.")
+                return
+            await notify_command(
                 f"Archive ready for {chat_spec}. Copied {count} new messages. "
-                "New messages will be mirrored automatically.",
+                "New messages will be mirrored automatically."
             )
 
     async def handle_command(event):
@@ -291,7 +314,7 @@ async def main():
             try:
                 await create_or_sync_archive(command.split(None, 1)[1].strip())
             except Exception as e:
-                await client.send_message(command_channel, f"Archive failed: {str(e)}")
+                await report_command_error(f"Archive failed: {str(e)}")
         elif command.startswith("/archive-adopt "):
             try:
                 archive_spec, source_spec = command.split(None, 2)[1:]
@@ -305,26 +328,24 @@ async def main():
                     "last_source_message_id": latest_source[0].id if latest_source else 0,
                 }
                 save_archive_state(archive_state)
-                await client.send_message(
-                    command_channel,
-                    "Existing archive adopted. New source messages will be mirrored.",
+                await notify_command(
+                    "Existing archive adopted. New source messages will be mirrored."
                 )
             except Exception as e:
-                await client.send_message(command_channel, f"Adoption failed: {str(e)}")
+                await report_command_error(f"Adoption failed: {str(e)}")
         elif command == "/archive-status":
             config = archive_config()
             if config:
-                await client.send_message(
-                    command_channel,
+                await notify_command(
                     f"Source: {config['source']}\nArchive channel ID: {config['archive_id']}\n"
-                    f"Last source message: {config.get('last_source_message_id', 0)}",
+                    f"Last source message: {config.get('last_source_message_id', 0)}"
                 )
             else:
-                await client.send_message(command_channel, "No archive configured. Use /archive <chat>.")
+                await notify_command("No archive configured. Use /archive <chat>.")
         elif command == "/archive-stop":
             archive_state.pop("archive", None)
             save_archive_state(archive_state)
-            await client.send_message(command_channel, "Live archive mirroring stopped.")
+            await notify_command("Live archive mirroring stopped.")
 
     def build_filename(username, chat_id, timestamp, index=None):
         """Build a filename stem as USERNAME(or id)_TIMESTAMP[_index]"""
@@ -509,19 +530,21 @@ async def main():
         if event.chat_id is None:
             return
 
-        deleted_count = len(event.deleted_ids)
         try:
             chat = await event.get_chat()
             chat_title = getattr(chat, "title", None) or getattr(chat, "first_name", None) or str(event.chat_id)
         except Exception:
+            chat = None
             chat_title = str(event.chat_id)
 
-        await client.send_message(
-            "me",
-            f"{deleted_count} message{'s' if deleted_count != 1 else ''} deleted in {chat_title}. "
-            "Telegram did not provide the deleting user's identity.",
-        )
-        print(f"Notified Saved Messages about {deleted_count} deleted message(s) in {chat_title}")
+        if isinstance(chat, User):
+            deleted_count = len(event.deleted_ids)
+            await client.send_message(
+                "me",
+                f"{deleted_count} message{'s' if deleted_count != 1 else ''} deleted in {chat_title}. "
+                "Telegram did not provide the deleting user's identity.",
+            )
+            print(f"Notified Saved Messages about {deleted_count} deleted message(s) in {chat_title}")
 
         config = archive_config()
         if config and event.chat_id == config["source_id"]:
