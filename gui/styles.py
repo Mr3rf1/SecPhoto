@@ -23,7 +23,7 @@ def find_icon_path(preferred_name: Optional[str] = None) -> Optional[Path]:
     if getattr(sys, 'frozen', False):
         search_dirs.append(Path(sys.executable).resolve().parent)
 
-    names = [preferred_name] if preferred_name else ["logo.ico", "logo.jpg", "secphoto.jpg"]
+    names = [preferred_name] if preferred_name else ["logo.ico", "secphoto.png", "logo.png", "logo.jpg", "secphoto.jpg"]
 
     for d in search_dirs:
         if d and d.exists():

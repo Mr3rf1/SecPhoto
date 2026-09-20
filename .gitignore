@@ -31,6 +31,7 @@ logo.jpg
 logo.ico
 *.ico
 secphoto.jpg
+secphoto.png
 
 # App Runtime Data, Sessions & Saved Media
 saved_media/
