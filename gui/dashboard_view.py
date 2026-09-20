@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from gui.components.stat_card import StatCard
 from gui.components.media_card import MediaCard
 from gui.components.log_viewer import LogViewer
+from gui.styles import get_theme_icon, get_theme_tooltip, THEME_DARK, THEME_LIGHT
 from core.config import load_config, APP_DIR
 
 # Repository & Donation links (customize as needed)
@@ -28,6 +29,7 @@ class DashboardView(QWidget):
     sig_stop_monitor = Signal()
     sig_logout = Signal()
     sig_open_settings = Signal()
+    sig_toggle_theme = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -67,6 +69,9 @@ class DashboardView(QWidget):
 
         main_layout.addWidget(splitter, 1)
 
+        # Apply initial theme state to dashboard widgets
+        self.update_theme_ui(self.config.get("theme", THEME_DARK))
+
     def _build_header_card(self) -> QFrame:
         """Build top navigation and profile bar."""
         card = QFrame()
@@ -80,7 +85,6 @@ class DashboardView(QWidget):
         self.avatar_label.setFixedSize(44, 44)
         self.avatar_label.setAlignment(Qt.AlignCenter)
         self.avatar_label.setStyleSheet("""
-            background-color: #21262d;
             border: 2px solid #58a6ff;
             border-radius: 22px;
             font-size: 20px;
@@ -92,10 +96,11 @@ class DashboardView(QWidget):
         user_info_layout.setSpacing(2)
         
         self.lbl_user_name = QLabel("Telegram Account")
-        self.lbl_user_name.setStyleSheet("font-size: 16px; font-weight: 700; color: #ffffff;")
+        self.lbl_user_name.setStyleSheet("font-size: 16px; font-weight: 700;")
         
         self.lbl_user_meta = QLabel("ID: - | @username")
-        self.lbl_user_meta.setStyleSheet("font-size: 12px; color: #8b949e;")
+        self.lbl_user_meta.setObjectName("subtitleLabel")
+        self.lbl_user_meta.setStyleSheet("font-size: 12px;")
 
         user_info_layout.addWidget(self.lbl_user_name)
         user_info_layout.addWidget(self.lbl_user_meta)
@@ -109,12 +114,11 @@ class DashboardView(QWidget):
 
         self.lbl_session_badge = QLabel("📱 Session: secret")
         self.lbl_session_badge.setStyleSheet("""
-            background-color: #21262d;
-            border: 1px solid #30363d;
+            border: 1px solid #8c959f;
             border-radius: 6px;
             padding: 2px 8px;
             font-size: 11px;
-            color: #79c0ff;
+            color: #0969da;
         """)
         
         self.lbl_status_badge = QLabel("🔴 Idle")
@@ -135,6 +139,12 @@ class DashboardView(QWidget):
         layout.addStretch()
 
         # Action Buttons
+        self.btn_theme_toggle = QPushButton()
+        self.btn_theme_toggle.setObjectName("themeToggleBtn")
+        self.btn_theme_toggle.setCursor(Qt.PointingHandCursor)
+        self.btn_theme_toggle.clicked.connect(lambda: self.sig_toggle_theme.emit())
+        layout.addWidget(self.btn_theme_toggle)
+
         btn_open_folder = QPushButton("📂 Saved Folder")
         btn_open_folder.setToolTip("Open local backup folder")
         btn_open_folder.clicked.connect(self._open_saved_folder)
@@ -216,10 +226,10 @@ class DashboardView(QWidget):
         # Placeholder Banner when no items
         self.empty_label = QLabel("🛰️ Interceptor Ready.\nListening for incoming secret photos & videos in all chats...")
         self.empty_label.setAlignment(Qt.AlignCenter)
+        self.empty_label.setObjectName("subtitleLabel")
         self.empty_label.setStyleSheet("""
-            color: #8b949e;
             font-size: 14px;
-            border: 2px dashed #30363d;
+            border: 2px dashed #8c959f;
             border-radius: 12px;
             padding: 40px;
             margin-top: 20px;
@@ -231,52 +241,45 @@ class DashboardView(QWidget):
 
         # Support & Donation footer notice
         self.footer_frame = QFrame()
+        self.footer_frame.setObjectName("donationBox")
         footer_layout = QHBoxLayout(self.footer_frame)
-        footer_layout.setContentsMargins(10, 5, 8, 5)
+        footer_layout.setContentsMargins(12, 6, 10, 6)
         footer_layout.setSpacing(8)
 
-        footer_label = QLabel(
-            f'⭐ If you find SecPhoto useful, please <a href="{GITHUB_REPO_URL}" style="color: #58a6ff; text-decoration: none; font-weight: 600;">Star the GitHub Repo</a> '
-            f'or <a href="{DONATE_URL}" style="color: #3fb950; text-decoration: none; font-weight: 600;">Donate</a> to support development!'
-        )
-        footer_label.setOpenExternalLinks(True)
-        footer_label.setAlignment(Qt.AlignCenter)
-        footer_label.setStyleSheet("color: #8b949e; font-size: 11px;")
-        footer_layout.addWidget(footer_label, 1)
+        self.footer_label = QLabel()
+        self.footer_label.setObjectName("donationLabel")
+        self.footer_label.setOpenExternalLinks(True)
+        self.footer_label.setAlignment(Qt.AlignCenter)
+        self.update_donation_text(is_dark=True)
+        footer_layout.addWidget(self.footer_label, 1)
 
         btn_close_footer = QPushButton("✕")
+        btn_close_footer.setObjectName("donationCloseBtn")
         btn_close_footer.setToolTip("Dismiss")
         btn_close_footer.setCursor(Qt.PointingHandCursor)
-        btn_close_footer.setFixedSize(18, 18)
-        btn_close_footer.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                color: #8b949e;
-                border: none;
-                font-size: 11px;
-                font-weight: bold;
-                padding: 0;
-                margin: 0;
-            }
-            QPushButton:hover {
-                color: #f85149;
-                background-color: rgba(248, 81, 73, 0.15);
-                border-radius: 9px;
-            }
-        """)
+        btn_close_footer.setFixedSize(20, 20)
         btn_close_footer.clicked.connect(lambda: self.footer_frame.hide())
         footer_layout.addWidget(btn_close_footer)
 
-        self.footer_frame.setStyleSheet("""
-            QFrame {
-                background-color: rgba(22, 27, 34, 0.7);
-                border: 1px solid #21262d;
-                border-radius: 8px;
-            }
-        """)
         layout.addWidget(self.footer_frame)
 
         return panel
+
+    def update_donation_text(self, is_dark: bool = True):
+        """Update link colors and styling in donation box according to theme."""
+        star_color = "#58a6ff" if is_dark else "#0969da"
+        donate_color = "#3fb950" if is_dark else "#1a7f37"
+        self.footer_label.setText(
+            f'⭐ If you find SecPhoto useful, please <a href="{GITHUB_REPO_URL}" style="color: {star_color}; text-decoration: none; font-weight: 600;">Star the GitHub Repo</a> '
+            f'or <a href="{DONATE_URL}" style="color: {donate_color}; text-decoration: none; font-weight: 600;">Donate</a> to support development!'
+        )
+
+    def update_theme_ui(self, theme: str):
+        """Update theme toggle button icon, tooltip, and donation box."""
+        if hasattr(self, "btn_theme_toggle"):
+            self.btn_theme_toggle.setText(get_theme_icon(theme))
+            self.btn_theme_toggle.setToolTip(get_theme_tooltip(theme))
+        self.update_donation_text(theme == THEME_DARK)
 
     def set_user(self, user_info: Dict[str, Any], session_name: str):
         """Update dashboard with authenticated user details."""

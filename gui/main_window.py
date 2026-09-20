@@ -5,10 +5,14 @@ from typing import Optional, Dict, Any
 from PySide6.QtCore import Qt, QThread, Slot, QTimer
 from PySide6.QtGui import QIcon, QCloseEvent
 from PySide6.QtWidgets import (
-    QMainWindow, QStackedWidget, QStatusBar, QMessageBox, QApplication
+    QMainWindow, QStackedWidget, QStatusBar, QMessageBox, QApplication,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame
 )
 
-from gui.styles import DARK_THEME, get_app_icon
+from gui.styles import (
+    THEME_DARK, THEME_LIGHT, get_theme_stylesheet, get_theme_icon,
+    get_theme_tooltip, get_app_icon, get_logo_pixmap
+)
 from gui.auth_view import AuthView
 from gui.dashboard_view import DashboardView
 from gui.settings_dialog import SettingsDialog
@@ -32,9 +36,12 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(get_app_icon())
         self.resize(1100, 720)
         self.setMinimumSize(880, 600)
-        self.setStyleSheet(DARK_THEME)
 
         self.config = load_config()
+        self.current_theme = self.config.get("theme", THEME_DARK)
+        if self.current_theme not in (THEME_DARK, THEME_LIGHT):
+            self.current_theme = THEME_DARK
+
         self.current_session_name = self.config.get("last_session", "secret")
         self.user_info: Dict[str, Any] = {}
 
@@ -44,6 +51,9 @@ class MainWindow(QMainWindow):
         # Root Stacked Widget
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
+
+        # Apply persisted theme to application
+        self.apply_theme(self.current_theme)
 
         # Check if saved session exists for instant dashboard display
         self.has_saved_session = False
@@ -104,6 +114,23 @@ class MainWindow(QMainWindow):
         self.dashboard_view.sig_stop_monitor.connect(self.worker.stop_monitoring)
         self.dashboard_view.sig_logout.connect(self._handle_logout)
         self.dashboard_view.sig_open_settings.connect(self._open_settings_dialog)
+        self.dashboard_view.sig_toggle_theme.connect(self._on_toggle_theme)
+
+    @Slot()
+    def _on_toggle_theme(self):
+        """Toggle between dark and light themes and persist the preference."""
+        new_theme = THEME_LIGHT if self.current_theme == THEME_DARK else THEME_DARK
+        self.current_theme = new_theme
+        self.config["theme"] = new_theme
+        save_config(self.config)
+        self.apply_theme(new_theme)
+
+    def apply_theme(self, theme: str):
+        """Apply theme QSS globally to application and update views."""
+        stylesheet = get_theme_stylesheet(theme)
+        QApplication.instance().setStyleSheet(stylesheet)
+        if hasattr(self, "dashboard_view") and hasattr(self.dashboard_view, "update_theme_ui"):
+            self.dashboard_view.update_theme_ui(theme)
 
     def _get_proxy_tuple(self) -> Optional[tuple]:
         """Read proxy configuration from config."""

@@ -43,15 +43,10 @@ class MediaCard(QFrame):
 
         self.setStyleSheet(f"""
             QFrame#card {{
-                background-color: #161b22;
-                border: 1px solid #30363d;
                 border-left: 4px solid {border_color};
-                border-radius: 10px;
-                padding: 10px;
             }}
             QFrame#card:hover {{
-                background-color: #1c2128;
-                border-color: #58a6ff;
+                border-color: {border_color};
             }}
         """)
 
@@ -114,7 +109,7 @@ class MediaCard(QFrame):
 
         sender_label = QLabel(user_display)
         sender_label.setTextFormat(Qt.RichText)
-        sender_label.setStyleSheet("font-size: 13px; color: #e6edf3;")
+        sender_label.setStyleSheet("font-size: 13px;")
         info_row.addWidget(sender_label)
         info_row.addStretch()
         layout.addLayout(info_row)
@@ -124,17 +119,13 @@ class MediaCard(QFrame):
         footer_row.setSpacing(10)
 
         saved_label = QLabel("✓ Saved to Telegram 'Saved Messages'")
-        saved_label.setStyleSheet("color: #3fb950; font-weight: 600; font-size: 11px;")
+        saved_label.setStyleSheet("color: #2ea043; font-weight: 600; font-size: 11px;")
         footer_row.addWidget(saved_label)
         footer_row.addStretch()
 
         if local_files and os.path.exists(local_files[0]):
             open_btn = QPushButton("📂 Open File")
             open_btn.setStyleSheet("""
-                background-color: #21262d;
-                color: #58a6ff;
-                border: 1px solid #30363d;
-                border-radius: 6px;
                 padding: 4px 10px;
                 font-size: 11px;
             """)
@@ -143,10 +134,6 @@ class MediaCard(QFrame):
 
         copy_btn = QPushButton("📋 Copy Link")
         copy_btn.setStyleSheet("""
-            background-color: #21262d;
-            color: #c9d1d9;
-            border: 1px solid #30363d;
-            border-radius: 6px;
             padding: 4px 10px;
             font-size: 11px;
         """)

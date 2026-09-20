@@ -98,3 +98,6 @@ Thumbs.db
 scripts/
 *.json
 installer/
+.specify
+.agents
+specs

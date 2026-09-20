@@ -107,6 +107,7 @@ python gui/run_gui.py
   - Real-time visual media feed with sender details, TTL timer badges, and 1-click links.
   - Built-in color-coded terminal log console with auto-scroll and clipboard copy.
   - SOCKS5 proxy and local storage backup configuration.
+  - **Dark & Light Mode Support**: Instant one-click theme toggle in the universal top header with persistent theme selection across application restarts.
 
 ### 💻 CLI / Terminal Mode
 

@@ -34,7 +34,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "target_chat": "saved messages",
     "forward_to_saved_messages": True,
     "timezone": "Asia/Tehran",
-    "auto_login": True
+    "auto_login": True,
+    "theme": "dark"
 }
 
 

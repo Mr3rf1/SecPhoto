@@ -27,7 +27,8 @@ class SettingsDialog(QDialog):
 
         # Title
         title_label = QLabel("⚙️ Interceptor & Save Settings")
-        title_label.setStyleSheet("font-size: 16px; font-weight: 700; color: #58a6ff;")
+        title_label.setObjectName("sectionTitle")
+        title_label.setStyleSheet("font-size: 16px; font-weight: 700;")
         layout.addWidget(title_label)
 
         # ----------------------------------------------------
@@ -39,7 +40,7 @@ class SettingsDialog(QDialog):
         dest_layout.setSpacing(12)
 
         dest_header = QLabel("💾 Save Destinations")
-        dest_header.setStyleSheet("font-size: 13px; font-weight: 700; color: #79c0ff;")
+        dest_header.setStyleSheet("font-size: 13px; font-weight: 700; color: #1f6feb;")
         dest_layout.addWidget(dest_header)
 
         # --- A. Save to Local Directory ---
@@ -76,12 +77,14 @@ class SettingsDialog(QDialog):
         dest_layout.addLayout(chat_row)
 
         self.lbl_chat_help = QLabel("💡 Supports: 'saved messages' / 'me', @username, or numeric ID (-100... / ID) for any user, channel, or group.")
-        self.lbl_chat_help.setStyleSheet("font-size: 11px; margin-left: 20px; color: #8b949e;")
+        self.lbl_chat_help.setObjectName("subtitleLabel")
+        self.lbl_chat_help.setStyleSheet("font-size: 11px; margin-left: 20px;")
         self.lbl_chat_help.setWordWrap(True)
         dest_layout.addWidget(self.lbl_chat_help)
 
         self.lbl_chat_status = QLabel("")
-        self.lbl_chat_status.setStyleSheet("font-size: 11px; margin-left: 20px; color: #8b949e;")
+        self.lbl_chat_status.setObjectName("subtitleLabel")
+        self.lbl_chat_status.setStyleSheet("font-size: 11px; margin-left: 20px;")
         dest_layout.addWidget(self.lbl_chat_status)
 
         layout.addWidget(dest_card)

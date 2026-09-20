@@ -12,14 +12,8 @@ class StatCard(QFrame):
         self._count = 0
 
         self.setStyleSheet(f"""
-            QFrame#card {{
-                background-color: #161b22;
-                border: 1px solid #30363d;
-                border-radius: 12px;
-                padding: 12px;
-            }}
             QFrame#card:hover {{
-                border: 1px solid {accent_color};
+                border-color: {accent_color};
             }}
         """)
 
@@ -30,7 +24,8 @@ class StatCard(QFrame):
         # Header row: Title + Icon
         top_layout = QHBoxLayout()
         self.title_label = QLabel(title)
-        self.title_label.setStyleSheet("color: #8b949e; font-size: 13px; font-weight: 600;")
+        self.title_label.setObjectName("subtitleLabel")
+        self.title_label.setStyleSheet("font-size: 13px; font-weight: 600;")
         
         self.icon_label = QLabel(icon_str)
         self.icon_label.setStyleSheet(f"font-size: 18px; color: {accent_color};")
