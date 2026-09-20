@@ -1,19 +1,20 @@
 import sys
 import os
 
-# Ensure Windows Taskbar displays the custom app icon rather than the generic Python executable icon
-if sys.platform == "win32":
-    import ctypes
-    try:
-        app_id = "Mr3rf1.SecPhoto.Interceptor.1.0"
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
-    except Exception:
-        pass
-
 # Ensure project root is in sys.path
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+
+from core.version import get_app_user_model_id
+
+# Ensure Windows Taskbar displays the custom app icon rather than the generic Python executable icon
+if sys.platform == "win32":
+    import ctypes
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(get_app_user_model_id())
+    except Exception:
+        pass
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication

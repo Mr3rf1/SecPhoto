@@ -111,8 +111,12 @@ python gui/run_gui.py
 
 ### 💻 CLI / Terminal Mode
 
-You can also run the core CLI tool directly from the root directory:
+You can inspect the application version or run headless interception directly from the terminal:
 ```bash
+# Check application version (v1.0.0)
+python SecPhoto.py --version
+
+# Run CLI monitoring mode
 python SecPhoto.py
 ```
 

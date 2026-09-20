@@ -71,7 +71,13 @@ async def main():
     parser = ArgumentParser(add_help=False)
     parser.add_argument('-p', '--proxy')
     parser.add_argument('-help', '--help', action='store_true')
-    argv = parser.parse_args()
+    parser.add_argument('-v', '--version', action='store_true')
+    argv, _ = parser.parse_known_args()
+
+    if argv.version:
+        from core.version import get_version_tag, APP_NAME
+        print(f"{APP_NAME} {get_version_tag()}")
+        return
 
     if argv.proxy is not None:
         ip = argv.proxy.split(':')[0]
@@ -285,6 +291,11 @@ async def main():
     await client.run_until_disconnected()
 
 if '__main__' == __name__:
+    import sys
+    if any(arg in sys.argv[1:] for arg in ('--version', '-v')):
+        from core.version import get_version_tag, APP_NAME
+        print(f"{APP_NAME} {get_version_tag()}")
+        sys.exit(0)
     try:
         import asyncio
         asyncio.run(main())

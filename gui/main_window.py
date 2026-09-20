@@ -18,6 +18,7 @@ from gui.dashboard_view import DashboardView
 from gui.settings_dialog import SettingsDialog
 from core.worker import TelethonWorker
 from core.config import load_config, save_config, APP_DIR, SESSIONS_DIR
+from core.version import get_window_title, get_app_user_model_id
 
 
 class MainWindow(QMainWindow):
@@ -28,11 +29,11 @@ class MainWindow(QMainWindow):
         if sys.platform == "win32":
             import ctypes
             try:
-                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Mr3rf1.SecPhoto.Interceptor.1.0")
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(get_app_user_model_id())
             except Exception:
                 pass
 
-        self.setWindowTitle("SecPhoto - Telegram Self-Destructive Media Interceptor")
+        self.setWindowTitle(get_window_title())
         self.setWindowIcon(get_app_icon())
         self.resize(1100, 720)
         self.setMinimumSize(880, 600)
