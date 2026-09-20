@@ -873,11 +873,12 @@ def get_theme_stylesheet(theme: str) -> str:
     return DARK_THEME
 
 
-def get_theme_icon(theme: str) -> str:
-    """Return the opposing display symbol for the toggle button."""
-    if theme == THEME_LIGHT:
-        return "🌙"
-    return "☀️"
+def get_theme_icon(theme: str) -> QIcon:
+    """Return the opposing display vector QIcon for the toggle button."""
+    from gui.icons import get_icon
+    # If currently in light mode, opposing icon is moon; in dark mode, opposing icon is sun
+    icon_name = "moon" if theme == THEME_LIGHT else "sun"
+    return get_icon(icon_name, theme=theme, size=18)
 
 
 def get_theme_tooltip(theme: str) -> str:

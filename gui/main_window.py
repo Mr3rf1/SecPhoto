@@ -208,7 +208,7 @@ class MainWindow(QMainWindow):
             self._enter_dashboard()
         else:
             self.stack.setCurrentIndex(0)
-            self.auth_view.add_session_status_lbl.setText("❌ Session is expired or unauthorized. Please Login New.")
+            self.auth_view.add_session_status_lbl.setText("Session is expired or unauthorized. Please Login New.")
             self.auth_view.add_session_status_lbl.setStyleSheet("color: #f85149;")
             self.auth_view.btn_load_session.setEnabled(True)
             self.status_bar.showMessage("Session unauthorized. Please log in.")
@@ -233,7 +233,7 @@ class MainWindow(QMainWindow):
             target_path = str(alt_session_file.with_suffix(''))
 
         if target_path:
-            self.status_bar.showMessage(f"⚡ Auto-connecting with last session: {last_session}...")
+            self.status_bar.showMessage(f"Auto-connecting with last session: {last_session}...")
             api_id = int(self.config.get("api_id", 1234567))
             api_hash = str(self.config.get("api_hash", "82bd7b4562f7ju24d182bdc38huj9352"))
             self._handle_load_session(target_path, api_id, api_hash, "")

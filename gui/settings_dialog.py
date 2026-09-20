@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Optional
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QSize
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QCheckBox, QFileDialog, QFrame, QComboBox,
@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 )
 from core.config import load_config, save_config, APP_DIR
 from gui.styles import get_app_icon
+from gui.icons import get_icon, get_icon_pixmap
 
 
 class SettingsDialog(QDialog):
@@ -16,7 +17,7 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None, worker=None):
         super().__init__(parent)
         self.worker = worker
-        self.setWindowTitle("⚙️ SecPhoto Settings")
+        self.setWindowTitle("SecPhoto Settings")
         self.setWindowIcon(get_app_icon())
         self.setFixedWidth(520)
         self.config = load_config()
@@ -26,10 +27,18 @@ class SettingsDialog(QDialog):
         layout.setSpacing(14)
 
         # Title
-        title_label = QLabel("⚙️ Interceptor & Save Settings")
+        title_row = QHBoxLayout()
+        title_row.setSpacing(8)
+        title_icon = QLabel()
+        title_icon.setPixmap(get_icon_pixmap("settings", color="#58a6ff", size=18))
+        title_row.addWidget(title_icon)
+
+        title_label = QLabel("Interceptor & Save Settings")
         title_label.setObjectName("sectionTitle")
         title_label.setStyleSheet("font-size: 16px; font-weight: 700;")
-        layout.addWidget(title_label)
+        title_row.addWidget(title_label)
+        title_row.addStretch()
+        layout.addLayout(title_row)
 
         # ----------------------------------------------------
         # 1. Save Destinations Card
@@ -39,12 +48,20 @@ class SettingsDialog(QDialog):
         dest_layout = QVBoxLayout(dest_card)
         dest_layout.setSpacing(12)
 
-        dest_header = QLabel("💾 Save Destinations")
+        dest_header_row = QHBoxLayout()
+        dest_header_row.setSpacing(6)
+        dest_icon = QLabel()
+        dest_icon.setPixmap(get_icon_pixmap("hard-drive", color="#1f6feb", size=15))
+        dest_header_row.addWidget(dest_icon)
+
+        dest_header = QLabel("Save Destinations")
         dest_header.setStyleSheet("font-size: 13px; font-weight: 700; color: #1f6feb;")
-        dest_layout.addWidget(dest_header)
+        dest_header_row.addWidget(dest_header)
+        dest_header_row.addStretch()
+        dest_layout.addLayout(dest_header_row)
 
         # --- A. Save to Local Directory ---
-        self.chk_local_backup = QCheckBox("📁 Save to local directory")
+        self.chk_local_backup = QCheckBox("Save to local directory")
         self.chk_local_backup.setChecked(self.config.get("save_local_backup", True))
         self.chk_local_backup.toggled.connect(self._toggle_local_fields)
         dest_layout.addWidget(self.chk_local_backup)
@@ -54,6 +71,8 @@ class SettingsDialog(QDialog):
         self.input_backup_dir = QLineEdit(self.config.get("local_backup_dir", str(APP_DIR / "saved_media")))
         self.input_backup_dir.setPlaceholderText("Path to local backup directory...")
         self.btn_browse_folder = QPushButton("Browse...")
+        self.btn_browse_folder.setIcon(get_icon("folder"))
+        self.btn_browse_folder.setIconSize(QSize(14, 14))
         self.btn_browse_folder.clicked.connect(self._browse_backup_dir)
         folder_row.addWidget(self.input_backup_dir)
         folder_row.addWidget(self.btn_browse_folder)
@@ -62,7 +81,7 @@ class SettingsDialog(QDialog):
         dest_layout.addSpacing(4)
 
         # --- B. Send to Telegram Chat ---
-        self.chk_send_to_chat = QCheckBox("📤 Send to Chat")
+        self.chk_send_to_chat = QCheckBox("Send to Chat")
         self.chk_send_to_chat.setChecked(self.config.get("send_to_chat", True))
         self.chk_send_to_chat.toggled.connect(self._toggle_chat_fields)
         dest_layout.addWidget(self.chk_send_to_chat)
@@ -76,7 +95,7 @@ class SettingsDialog(QDialog):
         chat_row.addWidget(self.input_target_chat)
         dest_layout.addLayout(chat_row)
 
-        self.lbl_chat_help = QLabel("💡 Supports: 'saved messages' / 'me', @username, or numeric ID (-100... / ID) for any user, channel, or group.")
+        self.lbl_chat_help = QLabel("Supports: 'saved messages' / 'me', @username, or numeric ID (-100... / ID) for any user, channel, or group.")
         self.lbl_chat_help.setObjectName("subtitleLabel")
         self.lbl_chat_help.setStyleSheet("font-size: 11px; margin-left: 20px;")
         self.lbl_chat_help.setWordWrap(True)
@@ -97,7 +116,7 @@ class SettingsDialog(QDialog):
         p_layout = QVBoxLayout(proxy_card)
         p_layout.setSpacing(10)
 
-        self.chk_proxy = QCheckBox("🌐 Enable SOCKS5 Proxy (Tor / Shadowsocks)")
+        self.chk_proxy = QCheckBox("Enable SOCKS5 Proxy (Tor / Shadowsocks)")
         self.chk_proxy.setChecked(self.config.get("proxy_enabled", False))
         self.chk_proxy.toggled.connect(self._toggle_proxy_fields)
         p_layout.addWidget(self.chk_proxy)
@@ -127,7 +146,7 @@ class SettingsDialog(QDialog):
         adv_layout.setSpacing(10)
 
         tz_row = QHBoxLayout()
-        tz_row.addWidget(QLabel("🕒 Timezone for Captions:"))
+        tz_row.addWidget(QLabel("Timezone for Captions:"))
         self.combo_tz = QComboBox()
         self.combo_tz.addItems(["Asia/Tehran", "UTC", "Local"])
         current_tz = self.config.get("timezone", "Asia/Tehran")
@@ -220,7 +239,7 @@ class SettingsDialog(QDialog):
                 self.btn_save.setEnabled(False)
                 self.btn_save.setText("Checking chat...")
                 self.lbl_chat_status.setStyleSheet("font-size: 11px; margin-left: 20px; color: #58a6ff;")
-                self.lbl_chat_status.setText("⏳ Checking chat accessibility in Telegram...")
+                self.lbl_chat_status.setText("Checking chat accessibility in Telegram...")
                 QApplication.processEvents()
 
                 accessible, msg = self.worker.validate_target_chat(target_chat)
@@ -229,7 +248,7 @@ class SettingsDialog(QDialog):
 
                 if not accessible:
                     self.lbl_chat_status.setStyleSheet("font-size: 11px; margin-left: 20px; color: #f85149;")
-                    self.lbl_chat_status.setText(f"❌ {msg}")
+                    self.lbl_chat_status.setText(f"{msg}")
                     QMessageBox.warning(
                         self,
                         "Chat Inaccessible",
@@ -239,7 +258,7 @@ class SettingsDialog(QDialog):
                     return
                 else:
                     self.lbl_chat_status.setStyleSheet("font-size: 11px; margin-left: 20px; color: #3fb950;")
-                    self.lbl_chat_status.setText(f"✅ {msg}")
+                    self.lbl_chat_status.setText(f"{msg}")
 
         # Parse proxy port
         try:

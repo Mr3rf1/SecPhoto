@@ -19,7 +19,14 @@ class LogViewer(QFrame):
 
         # Header toolbar
         header_layout = QHBoxLayout()
-        title_label = QLabel("🖥️ Live Engine Logs")
+        header_layout.setSpacing(8)
+        
+        from gui.icons import get_icon, get_icon_pixmap
+        icon_label = QLabel()
+        icon_label.setPixmap(get_icon_pixmap("terminal", color="#58a6ff", size=16))
+        header_layout.addWidget(icon_label)
+        
+        title_label = QLabel("Live Engine Logs")
         title_label.setStyleSheet("font-size: 14px; font-weight: 700; color: #ffffff;")
         header_layout.addWidget(title_label)
         header_layout.addStretch()
@@ -29,6 +36,7 @@ class LogViewer(QFrame):
         header_layout.addWidget(self.autoscroll_chk)
 
         copy_btn = QPushButton("Copy")
+        copy_btn.setIcon(get_icon("copy"))
         copy_btn.setStyleSheet("padding: 4px 10px; font-size: 11px;")
         copy_btn.clicked.connect(self.copy_logs)
         header_layout.addWidget(copy_btn)

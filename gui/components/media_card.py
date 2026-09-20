@@ -29,17 +29,22 @@ class MediaCard(QFrame):
         is_reply = data.get("is_reply", False)
         local_files = data.get("local_files", [])
 
+        from gui.icons import get_icon, get_icon_pixmap
+        from PySide6.QtCore import QSize
+
         # Border color based on type
         if media_type == "video":
             border_color = "#f0883e"
-            type_label_text = "🎥 Secret Video"
+            type_label_text = "Secret Video"
             type_badge_bg = "rgba(240, 136, 62, 0.2)"
             type_badge_color = "#ffa657"
+            type_icon_name = "video"
         else:
             border_color = "#58a6ff"
-            type_label_text = "📸 Secret Photo"
+            type_label_text = "Secret Photo"
             type_badge_bg = "rgba(88, 166, 255, 0.2)"
             type_badge_color = "#79c0ff"
+            type_icon_name = "camera"
 
         self.setStyleSheet(f"""
             QFrame#card {{
@@ -70,7 +75,7 @@ class MediaCard(QFrame):
         header_row.addWidget(type_badge)
 
         if ttl:
-            ttl_badge = QLabel(f"⏱️ TTL: {ttl}s")
+            ttl_badge = QLabel(f"TTL: {ttl}s")
             ttl_badge.setStyleSheet("""
                 background-color: rgba(248, 81, 73, 0.2);
                 color: #ff7b72;
@@ -82,7 +87,7 @@ class MediaCard(QFrame):
             header_row.addWidget(ttl_badge)
 
         if is_reply:
-            reply_badge = QLabel("↩️ Replied Message")
+            reply_badge = QLabel("Replied Message")
             reply_badge.setStyleSheet("""
                 background-color: rgba(210, 153, 34, 0.2);
                 color: #e3b341;
@@ -102,7 +107,12 @@ class MediaCard(QFrame):
 
         # Chat / Sender Info
         info_row = QHBoxLayout()
-        user_display = f"👤 <b>{chat_title}</b>"
+        info_row.setSpacing(6)
+        user_icon = QLabel()
+        user_icon.setPixmap(get_icon_pixmap("user", color="#8b949e", size=14))
+        info_row.addWidget(user_icon)
+
+        user_display = f"<b>{chat_title}</b>"
         if username:
             user_display += f" (<span style='color:#58a6ff;'>@{username}</span>)"
         user_display += f"  <span style='color:#8b949e;'>[ID: {chat_id}]</span>"
@@ -118,13 +128,15 @@ class MediaCard(QFrame):
         footer_row = QHBoxLayout()
         footer_row.setSpacing(10)
 
-        saved_label = QLabel("✓ Saved to Telegram 'Saved Messages'")
+        saved_label = QLabel("Saved to Telegram 'Saved Messages'")
         saved_label.setStyleSheet("color: #2ea043; font-weight: 600; font-size: 11px;")
         footer_row.addWidget(saved_label)
         footer_row.addStretch()
 
         if local_files and os.path.exists(local_files[0]):
-            open_btn = QPushButton("📂 Open File")
+            open_btn = QPushButton("Open File")
+            open_btn.setIcon(get_icon("folder"))
+            open_btn.setIconSize(QSize(14, 14))
             open_btn.setStyleSheet("""
                 padding: 4px 10px;
                 font-size: 11px;
@@ -132,11 +144,13 @@ class MediaCard(QFrame):
             open_btn.clicked.connect(lambda: self.open_local_file(local_files[0]))
             footer_row.addWidget(open_btn)
 
-        copy_btn = QPushButton("📋 Copy Link")
+        copy_btn = QPushButton("Copy Link")
+        copy_btn.setIcon(get_icon("copy"))
+        copy_btn.setIconSize(QSize(14, 14))
         copy_btn.setStyleSheet("""
-            padding: 4px 10px;
-            font-size: 11px;
-        """)
+                padding: 4px 10px;
+                font-size: 11px;
+            """)
         copy_btn.clicked.connect(lambda: self.copy_chat_link(chat_id, username))
         footer_row.addWidget(copy_btn)
 

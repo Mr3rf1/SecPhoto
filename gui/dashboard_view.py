@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from PySide6.QtCore import Qt, Signal, QUrl
+from PySide6.QtCore import Qt, Signal, QUrl, QSize
 from PySide6.QtGui import QDesktopServices, QPixmap, QPainter, QPainterPath
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -14,6 +14,7 @@ from gui.components.stat_card import StatCard
 from gui.components.media_card import MediaCard
 from gui.components.log_viewer import LogViewer
 from gui.styles import get_theme_icon, get_theme_tooltip, THEME_DARK, THEME_LIGHT
+from gui.icons import get_icon, get_icon_pixmap
 from core.config import load_config, APP_DIR
 
 # Repository & Donation links (customize as needed)
@@ -81,13 +82,14 @@ class DashboardView(QWidget):
         layout.setSpacing(14)
 
         # User Profile Avatar on left of account details
-        self.avatar_label = QLabel("👤")
+        self.avatar_label = QLabel()
         self.avatar_label.setFixedSize(44, 44)
         self.avatar_label.setAlignment(Qt.AlignCenter)
+        self.avatar_label.setPixmap(get_icon_pixmap("user", color="#58a6ff", size=24))
         self.avatar_label.setStyleSheet("""
             border: 2px solid #58a6ff;
             border-radius: 22px;
-            font-size: 20px;
+            background-color: #21262d;
         """)
         layout.addWidget(self.avatar_label)
 
@@ -112,7 +114,7 @@ class DashboardView(QWidget):
         badge_layout = QVBoxLayout()
         badge_layout.setSpacing(4)
 
-        self.lbl_session_badge = QLabel("📱 Session: secret")
+        self.lbl_session_badge = QLabel("Session: secret")
         self.lbl_session_badge.setStyleSheet("""
             border: 1px solid #8c959f;
             border-radius: 6px;
@@ -121,7 +123,7 @@ class DashboardView(QWidget):
             color: #0969da;
         """)
         
-        self.lbl_status_badge = QLabel("🔴 Idle")
+        self.lbl_status_badge = QLabel("Idle")
         self.lbl_status_badge.setStyleSheet("""
             background-color: rgba(248, 81, 73, 0.15);
             border: 1px solid #f85149;
@@ -142,25 +144,34 @@ class DashboardView(QWidget):
         self.btn_theme_toggle = QPushButton()
         self.btn_theme_toggle.setObjectName("themeToggleBtn")
         self.btn_theme_toggle.setCursor(Qt.PointingHandCursor)
+        self.btn_theme_toggle.setIconSize(QSize(18, 18))
         self.btn_theme_toggle.clicked.connect(lambda: self.sig_toggle_theme.emit())
         layout.addWidget(self.btn_theme_toggle)
 
-        btn_open_folder = QPushButton("📂 Saved Folder")
-        btn_open_folder.setToolTip("Open local backup folder")
-        btn_open_folder.clicked.connect(self._open_saved_folder)
-        layout.addWidget(btn_open_folder)
+        self.btn_open_folder = QPushButton("Saved Folder")
+        self.btn_open_folder.setIcon(get_icon("folder"))
+        self.btn_open_folder.setIconSize(QSize(16, 16))
+        self.btn_open_folder.setToolTip("Open local backup folder")
+        self.btn_open_folder.clicked.connect(self._open_saved_folder)
+        layout.addWidget(self.btn_open_folder)
 
-        btn_settings = QPushButton("⚙️ Settings")
-        btn_settings.clicked.connect(lambda: self.sig_open_settings.emit())
-        layout.addWidget(btn_settings)
+        self.btn_settings = QPushButton("Settings")
+        self.btn_settings.setIcon(get_icon("settings"))
+        self.btn_settings.setIconSize(QSize(16, 16))
+        self.btn_settings.clicked.connect(lambda: self.sig_open_settings.emit())
+        layout.addWidget(self.btn_settings)
 
-        btn_logout = QPushButton("🚪 Logout")
-        btn_logout.setStyleSheet("color: #f85149;")
-        btn_logout.clicked.connect(lambda: self.sig_logout.emit())
-        layout.addWidget(btn_logout)
+        self.btn_logout = QPushButton("Logout")
+        self.btn_logout.setIcon(get_icon("log-out", color="#f85149"))
+        self.btn_logout.setIconSize(QSize(16, 16))
+        self.btn_logout.setStyleSheet("color: #f85149;")
+        self.btn_logout.clicked.connect(lambda: self.sig_logout.emit())
+        layout.addWidget(self.btn_logout)
 
         # Main Power Button (Start / Stop)
-        self.btn_power = QPushButton("▶️ Start Monitoring")
+        self.btn_power = QPushButton("Start Monitoring")
+        self.btn_power.setIcon(get_icon("play", color="#ffffff"))
+        self.btn_power.setIconSize(QSize(16, 16))
         self.btn_power.setObjectName("powerBtnIdle")
         self.btn_power.setCursor(Qt.PointingHandCursor)
         self.btn_power.clicked.connect(self._toggle_monitor)
@@ -173,9 +184,9 @@ class DashboardView(QWidget):
         row = QHBoxLayout()
         row.setSpacing(14)
 
-        self.card_photos = StatCard("Secret Photos", "📸", accent_color="#58a6ff")
-        self.card_videos = StatCard("Secret Videos", "🎥", accent_color="#f0883e")
-        self.card_total = StatCard("Total Saved", "⚡", accent_color="#3fb950")
+        self.card_photos = StatCard("Secret Photos", "camera", accent_color="#58a6ff")
+        self.card_videos = StatCard("Secret Videos", "video", accent_color="#f0883e")
+        self.card_total = StatCard("Total Saved", "shield-check", accent_color="#3fb950")
 
         row.addWidget(self.card_photos)
         row.addWidget(self.card_videos)
@@ -193,7 +204,7 @@ class DashboardView(QWidget):
         # Feed Toolbar: Title + Filter ComboBox + Search
         toolbar = QHBoxLayout()
         toolbar.setSpacing(10)
-        feed_title = QLabel("🖼️ Intercepted Media Feed")
+        feed_title = QLabel("Intercepted Media Feed")
         feed_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #ffffff;")
         toolbar.addWidget(feed_title)
         toolbar.addStretch()
@@ -204,7 +215,7 @@ class DashboardView(QWidget):
         toolbar.addWidget(self.filter_combo)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Search chat or @user...")
+        self.search_input.setPlaceholderText("Search chat or @user...")
         self.search_input.setFixedWidth(190)
         self.search_input.textChanged.connect(self._apply_filter)
         toolbar.addWidget(self.search_input)
@@ -224,7 +235,7 @@ class DashboardView(QWidget):
         self.feed_layout.setAlignment(Qt.AlignTop)
 
         # Placeholder Banner when no items
-        self.empty_label = QLabel("🛰️ Interceptor Ready.\nListening for incoming secret photos & videos in all chats...")
+        self.empty_label = QLabel("Interceptor Ready.\nListening for incoming secret photos & videos in all chats...")
         self.empty_label.setAlignment(Qt.AlignCenter)
         self.empty_label.setObjectName("subtitleLabel")
         self.empty_label.setStyleSheet("""
@@ -253,7 +264,7 @@ class DashboardView(QWidget):
         self.update_donation_text(is_dark=True)
         footer_layout.addWidget(self.footer_label, 1)
 
-        btn_close_footer = QPushButton("✕")
+        btn_close_footer = QPushButton("X")
         btn_close_footer.setObjectName("donationCloseBtn")
         btn_close_footer.setToolTip("Dismiss")
         btn_close_footer.setCursor(Qt.PointingHandCursor)
@@ -270,15 +281,20 @@ class DashboardView(QWidget):
         star_color = "#58a6ff" if is_dark else "#0969da"
         donate_color = "#3fb950" if is_dark else "#1a7f37"
         self.footer_label.setText(
-            f'⭐ If you find SecPhoto useful, please <a href="{GITHUB_REPO_URL}" style="color: {star_color}; text-decoration: none; font-weight: 600;">Star the GitHub Repo</a> '
+            f'If you find SecPhoto useful, please <a href="{GITHUB_REPO_URL}" style="color: {star_color}; text-decoration: none; font-weight: 600;">Star the GitHub Repo</a> '
             f'or <a href="{DONATE_URL}" style="color: {donate_color}; text-decoration: none; font-weight: 600;">Donate</a> to support development!'
         )
 
     def update_theme_ui(self, theme: str):
         """Update theme toggle button icon, tooltip, and donation box."""
         if hasattr(self, "btn_theme_toggle"):
-            self.btn_theme_toggle.setText(get_theme_icon(theme))
+            self.btn_theme_toggle.setIcon(get_theme_icon(theme))
+            self.btn_theme_toggle.setText("")
             self.btn_theme_toggle.setToolTip(get_theme_tooltip(theme))
+        if hasattr(self, "btn_open_folder"):
+            self.btn_open_folder.setIcon(get_icon("folder", theme=theme))
+        if hasattr(self, "btn_settings"):
+            self.btn_settings.setIcon(get_icon("settings", theme=theme))
         self.update_donation_text(theme == THEME_DARK)
 
     def set_user(self, user_info: Dict[str, Any], session_name: str):
@@ -298,7 +314,7 @@ class DashboardView(QWidget):
         if username:
             user_meta_text += f" | @{username}"
         self.lbl_user_meta.setText(user_meta_text)
-        self.lbl_session_badge.setText(f"📱 Session: {session_name}")
+        self.lbl_session_badge.setText(f"Session: {session_name}")
 
         self._update_user_avatar(photo_path, full_name)
 
@@ -346,13 +362,12 @@ class DashboardView(QWidget):
                 font-weight: 700;
             """)
         else:
-            self.avatar_label.setPixmap(QPixmap())
-            self.avatar_label.setText("👤")
+            self.avatar_label.setText("")
+            self.avatar_label.setPixmap(get_icon_pixmap("user", color="#58a6ff", size=24))
             self.avatar_label.setStyleSheet("""
                 background-color: #21262d;
                 border: 2px solid #58a6ff;
                 border-radius: 22px;
-                font-size: 20px;
             """)
 
     def update_status(self, status: str):
@@ -360,7 +375,7 @@ class DashboardView(QWidget):
         st = status.lower()
         if st in ("listening", "monitoring"):
             self.is_monitoring = True
-            self.lbl_status_badge.setText("🟢 Monitoring Active")
+            self.lbl_status_badge.setText("Monitoring Active")
             self.lbl_status_badge.setStyleSheet("""
                 background-color: rgba(63, 185, 80, 0.15);
                 border: 1px solid #3fb950;
@@ -370,7 +385,8 @@ class DashboardView(QWidget):
                 font-weight: 700;
                 color: #3fb950;
             """)
-            self.btn_power.setText("⏹️ Stop Monitoring")
+            self.btn_power.setText("Stop Monitoring")
+            self.btn_power.setIcon(get_icon("square", color="#ffffff"))
             self.btn_power.setObjectName("powerBtnRunning")
             self.btn_power.setStyleSheet("""
                 background-color: #da3633;
@@ -382,7 +398,7 @@ class DashboardView(QWidget):
                 font-weight: 700;
             """)
         elif st in ("connecting", "sending_code", "verifying_code", "checking_session"):
-            self.lbl_status_badge.setText("🟡 Connecting...")
+            self.lbl_status_badge.setText("Connecting...")
             self.lbl_status_badge.setStyleSheet("""
                 background-color: rgba(210, 153, 34, 0.15);
                 border: 1px solid #d29922;
@@ -394,7 +410,7 @@ class DashboardView(QWidget):
             """)
         else:
             self.is_monitoring = False
-            self.lbl_status_badge.setText("🔴 Idle")
+            self.lbl_status_badge.setText("Idle")
             self.lbl_status_badge.setStyleSheet("""
                 background-color: rgba(248, 81, 73, 0.15);
                 border: 1px solid #f85149;
@@ -404,7 +420,8 @@ class DashboardView(QWidget):
                 font-weight: 700;
                 color: #ff7b72;
             """)
-            self.btn_power.setText("▶️ Start Monitoring")
+            self.btn_power.setText("Start Monitoring")
+            self.btn_power.setIcon(get_icon("play", color="#ffffff"))
             self.btn_power.setObjectName("powerBtnIdle")
             self.btn_power.setStyleSheet("""
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #238636, stop:1 #1f6feb);
