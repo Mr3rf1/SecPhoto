@@ -19,7 +19,7 @@ if sys.platform == "win32":
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 from gui.main_window import MainWindow
-from gui.styles import get_app_icon
+from gui.styles import get_app_icon, apply_windows_native_icon
 
 
 def main():
@@ -35,6 +35,7 @@ def main():
 
     window = MainWindow()
     window.show()
+    apply_windows_native_icon(window)
 
     sys.exit(app.exec())
 

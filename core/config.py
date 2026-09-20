@@ -12,8 +12,11 @@ DEFAULT_API_HASH = "82bd7b4562f7ju24d182bdc38huj9352"
 # Determine application directory (works for source scripts and PyInstaller binaries)
 if getattr(sys, 'frozen', False):
     APP_DIR = Path(sys.executable).resolve().parent
+    # In PyInstaller one-file portable exe, packaged assets live in sys._MEIPASS
+    BUNDLE_DIR = Path(getattr(sys, '_MEIPASS', APP_DIR)).resolve()
 else:
     APP_DIR = Path(__file__).resolve().parent.parent
+    BUNDLE_DIR = APP_DIR
 
 CONFIG_FILE = APP_DIR / "secphoto_config.json"
 SESSIONS_DIR = APP_DIR / "sessions"

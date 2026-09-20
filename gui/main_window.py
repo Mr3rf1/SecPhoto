@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 
 from gui.styles import (
     THEME_DARK, THEME_LIGHT, get_theme_stylesheet, get_theme_icon,
-    get_theme_tooltip, get_app_icon, get_logo_pixmap
+    get_theme_tooltip, get_app_icon, get_logo_pixmap, apply_windows_native_icon
 )
 from gui.auth_view import AuthView
 from gui.dashboard_view import DashboardView
@@ -35,8 +35,10 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(get_window_title())
         self.setWindowIcon(get_app_icon())
+        apply_windows_native_icon(self)
         self.resize(1100, 720)
         self.setMinimumSize(880, 600)
+        self.center_on_screen()
 
         self.config = load_config()
         self.current_theme = self.config.get("theme", THEME_DARK)
@@ -288,6 +290,29 @@ class MainWindow(QMainWindow):
     @Slot(dict)
     def _on_media_captured(self, data: dict):
         self.dashboard_view.add_intercepted_media(data)
+
+    def center_on_screen(self):
+        """Center the window in the middle of the user's active screen resolution."""
+        screen = self.screen() or QApplication.primaryScreen()
+        if screen:
+            geo = screen.availableGeometry()
+            # If screen work area is smaller than target dimensions, adapt gracefully
+            target_w = min(self.width(), int(geo.width() * 0.95))
+            target_h = min(self.height(), int(geo.height() * 0.95))
+            if target_w != self.width() or target_h != self.height():
+                self.resize(target_w, target_h)
+
+            x = geo.x() + (geo.width() - self.width()) // 2
+            y = geo.y() + (geo.height() - self.height()) // 2
+            self.move(max(geo.x(), x), max(geo.y(), y))
+
+    def showEvent(self, event):
+        """Ensure Windows OS title bar and taskbar icons are applied to HWND upon display, and window is centered."""
+        super().showEvent(event)
+        if not hasattr(self, "_initially_centered"):
+            self.center_on_screen()
+            self._initially_centered = True
+        apply_windows_native_icon(self)
 
     def closeEvent(self, event: QCloseEvent):
         """Gracefully terminate Telethon client and event loop on exit."""

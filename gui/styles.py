@@ -1,45 +1,145 @@
+import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QPainterPath
-from core.config import APP_DIR
+from core.config import APP_DIR, BUNDLE_DIR
 
 THEME_DARK = "dark"
 THEME_LIGHT = "light"
 DEFAULT_THEME = THEME_DARK
 
 
+def find_icon_path(preferred_name: Optional[str] = None) -> Optional[Path]:
+    """
+    Locate the logo icon file across bundled resources, application directory,
+    and repository paths (supports both source scripts and PyInstaller portable builds).
+    """
+    search_dirs: List[Optional[Path]] = [
+        BUNDLE_DIR,
+        APP_DIR,
+        Path(__file__).resolve().parent.parent,
+    ]
+    if getattr(sys, 'frozen', False):
+        search_dirs.append(Path(sys.executable).resolve().parent)
+
+    names = [preferred_name] if preferred_name else ["logo.ico", "logo.jpg", "secphoto.jpg"]
+
+    for d in search_dirs:
+        if d and d.exists():
+            for name in names:
+                p = d / name
+                if p.exists():
+                    return p
+    return None
+
+
 def get_app_icon() -> QIcon:
-    """Return QIcon of application logo for title bars, taskbars and windows."""
-    for name in ["logo.ico", "logo.jpg", "secphoto.jpg"]:
-        p = APP_DIR / name
-        if p.exists():
-            return QIcon(str(p))
-    return QIcon()
+    """
+    Return a multi-resolution QIcon of the application logo for title bars,
+    taskbars, and OS window managers.
+    Works in both development mode and frozen PyInstaller portable builds.
+    """
+    icon = QIcon()
+    ico_path = find_icon_path("logo.ico")
+    if ico_path and ico_path.exists():
+        icon = QIcon(str(ico_path))
+
+    # Also augment with smoothly downscaled pixmaps from high-res source for crisp rendering across all DPIs
+    img_path = find_icon_path("logo.jpg") or ico_path
+    if img_path and img_path.exists():
+        base_pix = QPixmap(str(img_path))
+        if not base_pix.isNull():
+            for size in [16, 24, 32, 48, 64, 128, 256]:
+                scaled = base_pix.scaled(
+                    size, size,
+                    Qt.AspectRatioMode.IgnoreAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                icon.addPixmap(scaled)
+
+    return icon
+
+
+def apply_windows_native_icon(window) -> None:
+    """
+    Directly assign Win32 native HICON handles to the window's HWND via WM_SETICON.
+    Ensures Windows OS displays the custom logo in both the native window title bar
+    (beside the title) and the Windows taskbar, including in PyInstaller portable builds.
+    """
+    if sys.platform != "win32":
+        return
+
+    try:
+        import ctypes
+        hwnd = int(window.winId())
+        if not hwnd:
+            return
+
+        ico_path = find_icon_path("logo.ico")
+        h_sm = 0
+        h_bg = 0
+        IMAGE_ICON = 1
+        LR_LOADFROMFILE = 0x0010
+
+        if ico_path and ico_path.exists():
+            h_sm = ctypes.windll.user32.LoadImageW(
+                None, str(ico_path.resolve()), IMAGE_ICON, 16, 16, LR_LOADFROMFILE
+            )
+            h_bg = ctypes.windll.user32.LoadImageW(
+                None, str(ico_path.resolve()), IMAGE_ICON, 32, 32, LR_LOADFROMFILE
+            )
+
+        # Fallback for frozen PyInstaller portable executable
+        if (not h_sm or not h_bg) and getattr(sys, 'frozen', False):
+            h_exe = ctypes.windll.shell32.ExtractIconW(0, sys.executable, 0)
+            if h_exe:
+                h_sm = h_sm or h_exe
+                h_bg = h_bg or h_exe
+
+        WM_SETICON = 0x0080
+        ICON_SMALL = 0
+        ICON_BIG = 1
+
+        if h_sm:
+            ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, h_sm)
+        if h_bg:
+            ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, h_bg)
+
+        # Also register class icon for process window class
+        GCLP_HICON = -14
+        GCLP_HICONSM = -34
+        set_class_long = getattr(ctypes.windll.user32, "SetClassLongPtrW", ctypes.windll.user32.SetClassLongW)
+        if h_bg:
+            set_class_long(hwnd, GCLP_HICON, h_bg)
+        if h_sm:
+            set_class_long(hwnd, GCLP_HICONSM, h_sm)
+
+    except Exception:
+        pass
 
 
 def get_logo_pixmap(size: int = 44, radius: int = 12) -> Optional[QPixmap]:
     """Return a high-quality anti-aliased rounded QPixmap of the logo for UI headers and app bars."""
-    for name in ["logo.jpg", "logo.ico", "secphoto.jpg"]:
-        p = APP_DIR / name
-        if p.exists():
-            orig = QPixmap(str(p))
-            if not orig.isNull():
-                scaled = orig.scaled(
-                    size, size,
-                    Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                    Qt.TransformationMode.SmoothTransformation
-                )
-                target = QPixmap(size, size)
-                target.fill(Qt.GlobalColor.transparent)
-                painter = QPainter(target)
-                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-                path = QPainterPath()
-                path.addRoundedRect(0, 0, size, size, radius, radius)
-                painter.setClipPath(path)
-                painter.drawPixmap(0, 0, scaled)
-                painter.end()
-                return target
+    p = find_icon_path("logo.jpg") or find_icon_path()
+    if p and p.exists():
+        orig = QPixmap(str(p))
+        if not orig.isNull():
+            scaled = orig.scaled(
+                size, size,
+                Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                Qt.TransformationMode.SmoothTransformation
+            )
+            target = QPixmap(size, size)
+            target.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(target)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            path = QPainterPath()
+            path.addRoundedRect(0, 0, size, size, radius, radius)
+            painter.setClipPath(path)
+            painter.drawPixmap(0, 0, scaled)
+            painter.end()
+            return target
     return None
 
 

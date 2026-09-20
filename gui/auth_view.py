@@ -15,7 +15,6 @@ from core.config import (
     load_config, save_config, list_saved_sessions, SESSIONS_DIR, APP_DIR,
     DEFAULT_API_ID, DEFAULT_API_HASH
 )
-from gui.styles import get_logo_pixmap
 from gui.icons import get_icon, get_icon_pixmap
 
 
@@ -62,21 +61,7 @@ class AuthView(QWidget):
         # App Brand & Hero Header
         header_layout = QVBoxLayout()
         header_layout.setAlignment(Qt.AlignCenter)
-        header_layout.setSpacing(10)
-
-        # Brand Logo Badge
-        logo_pix = get_logo_pixmap(size=72, radius=36)
-        if logo_pix:
-            logo_label = QLabel()
-            logo_label.setAlignment(Qt.AlignCenter)
-            logo_label.setPixmap(logo_pix)
-            logo_label.setFixedSize(72, 72)
-            logo_label.setStyleSheet("""
-                border: 2px solid #58a6ff;
-                border-radius: 36px;
-                background-color: #21262d;
-            """)
-            header_layout.addWidget(logo_label, alignment=Qt.AlignCenter)
+        header_layout.setSpacing(8)
 
         title = QLabel("SecPhoto Interceptor")
         title.setObjectName("titleLabel")
