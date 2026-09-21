@@ -9,8 +9,14 @@ build/
 dist/
 dist_installer/
 dist_linux/
+dist_android/
+.buildozer/
+*.apk
+*.aab
+.pyside6-android-deploy/
 Output/
 *.spec
+!pysidedeploy.spec
 *.exe
 _internal/
 develop-eggs/
@@ -103,3 +109,8 @@ installer/
 .specify
 .agents
 specs
+main.py
+pysidedeploy.spec
+requirements-cli.txt
+build-android.yml
+

@@ -9,17 +9,32 @@ import sys
 DEFAULT_API_ID = 1234567
 DEFAULT_API_HASH = "82bd7b4562f7ju24d182bdc38huj9352"
 
-# Determine application directory (works for source scripts and PyInstaller binaries)
-if getattr(sys, 'frozen', False):
+def is_android() -> bool:
+    """Determine if running inside Android runtime."""
+    return (
+        "ANDROID_ARGUMENT" in os.environ
+        or "ANDROID_BOOTLOGO" in os.environ
+        or sys.platform == "android"
+    )
+
+# Determine application directory (works for source scripts, PyInstaller binaries, and Android runtime)
+if is_android():
+    APP_DIR = Path(os.environ.get("ANDROID_APP_PATH", os.path.expanduser("~"))).resolve()
+    BUNDLE_DIR = APP_DIR
+    ANDROID_MEDIA_DIR = Path("/storage/emulated/0/Android/data/org.secphoto.app/files/saved_media")
+elif getattr(sys, 'frozen', False):
     APP_DIR = Path(sys.executable).resolve().parent
     # In PyInstaller one-file portable exe, packaged assets live in sys._MEIPASS
     BUNDLE_DIR = Path(getattr(sys, '_MEIPASS', APP_DIR)).resolve()
+    ANDROID_MEDIA_DIR = APP_DIR / "saved_media"
 else:
     APP_DIR = Path(__file__).resolve().parent.parent
     BUNDLE_DIR = APP_DIR
+    ANDROID_MEDIA_DIR = APP_DIR / "saved_media"
 
 CONFIG_FILE = APP_DIR / "secphoto_config.json"
 SESSIONS_DIR = APP_DIR / "sessions"
+DEFAULT_MEDIA_DIR = ANDROID_MEDIA_DIR if is_android() else (APP_DIR / "saved_media")
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "api_id": DEFAULT_API_ID,
@@ -32,7 +47,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "proxy_user": "",
     "proxy_password": "",
     "save_local_backup": True,
-    "local_backup_dir": str(APP_DIR / "saved_media"),
+    "local_backup_dir": str(DEFAULT_MEDIA_DIR),
     "send_to_chat": True,
     "target_chat": "saved messages",
     "forward_to_saved_messages": True,

@@ -1,225 +1,178 @@
 # SecPhoto
 
-A Python tool to save Telegram self-destructing photos and videos. This tool allows you to capture and save disappearing media from Telegram chats before they expire.
+A powerful, privacy-focused tool designed to automatically capture and save Telegram self-destructing (disappearing) photos and videos before they expire.
 
-## ⚠️ Important Notice
+SecPhoto offers both a **modern graphical desktop interface (PySide6)** and a **lightweight headless CLI**, providing flexible monitoring across private chats, groups, and channels.
 
-**Before using this tool, you MUST obtain your own Telegram API credentials.** The current code contains hardcoded API credentials which should be replaced with your own for security and functionality reasons.
+---
+
+## ✨ Key Features
+
+- ⚡ **Automatic Real-Time Interception**: Listens in the background and immediately captures disappearing media with TTL timers as soon as they arrive.
+- 💬 **Reply-to-Save**: Missed an incoming self-destructing photo or video? Simply **reply to the message** in Telegram, and SecPhoto will capture and preserve it on demand.
+- 📦 **Grouped Album Support**: Automatically detects and groups multi-item albums, preserving order and delivering them as cohesive albums with complete metadata.
+- 🖥️ **Modern Desktop GUI**: Sleek PySide6 interface featuring:
+  - Interactive login with phone number, verification code, and 2FA password support.
+  - Live monitoring dashboard with one-click Start/Stop controls.
+  - Real-time statistics counters (Photos, Videos, and Albums captured).
+  - Visual media stream with sender information, timestamp badges, and quick links.
+  - Integrated live activity console with color-coded logs and instant clipboard copy.
+  - Instant **Dark & Light Mode** theme switching with persistent preferences.
+  - In-app proxy and storage settings configuration.
+- 💻 **Lightweight Headless CLI**: Fast terminal-based execution ideal for low-resource environments, remote servers, or command-line workflows.
+- 🔒 **Local-First & Zero Telemetry**: Operates strictly between your client and Telegram's official MTProto servers. No analytics, tracking, or remote servers.
+- 🌐 **SOCKS5 Proxy Ready**: Built-in SOCKS5 proxy support (including Tor) for restricted networks.
+
+---
 
 ## 📋 Prerequisites
 
-- Python 3.6 or higher
-- A Telegram account
-- Telegram API credentials (api_id and api_hash)
+- **Python 3.8** or higher
+- A **Telegram account**
+- Telegram **API credentials** (`api_id` and `api_hash`)
+
+---
 
 ## 🔑 Getting Telegram API Credentials
 
-### Step 1: Create a Telegram Application
+Before running SecPhoto, you will need your own Telegram API credentials:
 
-1. Go to [my.telegram.org](https://my.telegram.org)
-2. Log in with your phone number (the same number you use for Telegram)
-3. Click on "API Development Tools"
+1. Visit **[my.telegram.org](https://my.telegram.org)** in your web browser.
+2. Log in using your Telegram phone number (in international format, e.g., `+1234567890`).
+3. Navigate to **API Development Tools**.
+4. Fill out the application form:
+   - **App title**: Choose any name (e.g., `SecPhoto`)
+   - **Short name**: Choose a short identifier (e.g., `secphoto`)
+   - **Platform**: Select `Desktop`
+5. Click **Create application**.
+6. Copy your **`api_id`** (numeric) and **`api_hash`** (alphanumeric string).
 
-### Step 2: Create a New Application
+> **Note**: When using the Desktop GUI, you can enter your `api_id` and `api_hash` directly into the login screen without modifying any source files.
 
-1. Fill out the form with the following information:
-   - **App title**: Choose any name (e.g., "SecPhoto Tool")
-   - **Short name**: Choose a short name (e.g., "secphoto")
-   - **URL**: Leave empty or add your website
-   - **Platform**: Choose "Desktop"
-   - **Description**: Brief description of your app
-2. Click "Create application"
+---
 
-### Step 3: Get Your Credentials
+## 🚀 Installation & Downloads
 
-After creating the application, you'll see:
-- **api_id**: A numeric ID (e.g., 1234567)
-- **api_hash**: A 32-character hash (e.g., "abcdef1234567890abcdef1234567890")
+### 📥 Pre-Built GUI Applications (Windows & Linux)
 
-### Step 4: Update the Code
+If you prefer not to install Python or manage dependencies manually, pre-built GUI packages for **Windows** and **Linux** are available directly on the **[GitHub Releases](https://github.com/Mr3rf1/SecPhoto/releases)** section. Simply download the latest release for your platform and launch it directly.
 
-1. Open `SecPhoto.py` in a text editor
-2. Find these lines (around line 11-12):
-   ```python
-   api_id = 1234567
-   api_hash = "82bd7b4562teujin24d18rfayt39b2d9352"
-   ```
-3. Replace them with your own credentials:
-   ```python
-   api_id = YOUR_API_ID_HERE
-   api_hash = "YOUR_API_HASH_HERE"
-   ```
-
-## 🚀 Installation
-
-### For Windows/Linux/macOS
+### 🛠️ Running from Source (Windows, macOS, Linux)
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/Mr3rf1/SecPhoto
+   git clone https://github.com/Mr3rf1/SecPhoto.git
    cd SecPhoto
    ```
 
-2. **Install Python dependencies:**
+2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-   Or if you're using Python 3 specifically:
+### Termux (Android)
+
+Run SecPhoto in headless CLI mode on Android via Termux:
+
+1. **Update packages and install Python:**
    ```bash
-   python3 -m pip install -r requirements.txt
+   pkg update && pkg install python git
    ```
 
-### For Termux (Android)
-
-1. **Update packages:**
+2. **Clone and install dependencies:**
    ```bash
-   apt update && apt upgrade
-   ```
-
-2. **Install required packages:**
-   ```bash
-   pkg install python3 python3-pip git
-   ```
-
-3. **Clone and setup:**
-   ```bash
-   git clone https://github.com/Mr3rf1/SecPhoto
+   git clone https://github.com/Mr3rf1/SecPhoto.git
    cd SecPhoto
-   python3 -m pip install -r requirements.txt
+   pip install -r requirements.txt
    ```
 
-## 📖 Usage
+---
 
-### 🖥️ Modern PySide6 GUI Application (Recommended)
+## 📖 Usage Guide
 
-To launch the modern graphical user interface:
+SecPhoto provides two distinct interfaces to suit your workflow:
+
+### 🖥️ Option 1: Modern Desktop GUI (Recommended)
+
+You can run the pre-built desktop application directly from **[GitHub Releases](https://github.com/Mr3rf1/SecPhoto/releases)** (for Windows and Linux), or launch it from source:
+
 ```bash
 python gui/run_gui.py
 ```
 
-**GUI Features:**
-- **Login New Account**: Interactive form with `api_id`, `api_hash`, phone number, dynamic Telegram verification code input, and 2FA password support. Automatically creates and stores your session.
-- **Add Logged In Session**: Quick file picker to import any `.session` file or select from detected session files.
-- **Real-Time Monitoring Dashboard**:
-  - Live power toggle switch (Start / Stop monitoring).
-  - Metrics & counter cards (Photos, Videos, Albums intercepted).
-  - Real-time visual media feed with sender details, TTL timer badges, and 1-click links.
-  - Built-in color-coded terminal log console with auto-scroll and clipboard copy.
-  - SOCKS5 proxy and local storage backup configuration.
-  - **Dark & Light Mode Support**: Instant one-click theme toggle in the universal top header with persistent theme selection across application restarts.
+#### GUI Highlights:
+- **Interactive Authentication**: Log in directly with your phone number, receive verification codes, and authenticate with 2FA passwords seamlessly.
+- **Account Profiles**: Switch between authenticated accounts or log in with fresh credentials at any time.
+- **Real-Time Dashboard**:
+  - Click **Start Monitoring** to begin capturing disappearing media in real time.
+  - Track live statistics for captured photos, videos, and albums.
+  - Inspect incoming media cards displaying chat name, sender, date, time, and links.
+- **Theme Switching**: Toggle between dark and light themes using the theme button in the top navigation bar.
+- **Settings Dialog**: Configure proxy connections and delivery destinations with a single click.
 
-### 💻 CLI / Terminal Mode
+---
 
-You can inspect the application version or run headless interception directly from the terminal:
+### 💻 Option 2: Headless CLI Mode
+
+Run the lightweight command-line interface directly in your terminal:
+
 ```bash
-# Check application version (v1.0.0)
-python SecPhoto.py --version
-
-# Run CLI monitoring mode
 python SecPhoto.py
 ```
 
-## 📦 Building Executables & Installers
-
-### 🪟 Windows (Portable .exe & Setup Installer)
-Run the Windows build script to create both a standalone portable `.exe` and a distribution bundle:
-```bash
-python scripts/build_windows.py
-```
-- **Portable .exe**: Located in `dist/SecPhoto_Portable.exe` (run anywhere without installation).
-- **Windows Installer**: Compiled using Inno Setup from `installer/SecPhoto_Installer.iss` to produce `dist_installer/SecPhoto_Setup.exe`.
-
-### 🐧 Linux (Standalone Binary)
-Make the build script executable and run on Linux:
-```bash
-chmod +x scripts/build_linux.sh
-./scripts/build_linux.sh
-```
-- **Standalone Binary**: `dist/SecPhoto`
-- **Direct Launcher**: `dist/run.sh`
-- **Desktop Entry**: `dist/SecPhoto.desktop`
-
-### Reply-to-Save Feature
-
-The tool now supports a convenient reply-to-save feature:
-
-1. **Automatic Detection**: The tool automatically monitors all chats and saves self-destructing media as soon as it appears
-2. **Reply Method**: If you missed a self-destructing message, simply **reply to it** and the tool will save the media
-3. **Works Everywhere**: This feature works in all types of chats (private, groups, channels)
-4. **Real-time Processing**: Both automatic detection and reply-based saving happen in real-time
-
-### With Proxy (Tor/SOCKS5)
-
-If you need to use a proxy:
-```bash
-python3 SecPhoto.py -p 127.0.0.1:9050
-```
-
-### How It Works
-
-1. Run the command to start monitoring all chats
-2. The tool will automatically detect and save self-destructing media in real-time
-3. **New Feature**: You can also save self-destructing media by **replying** to any message containing such media
-4. The tool will automatically download and save the media
-5. The saved media will be sent to your "Saved Messages" in Telegram
-
-### Getting Help
-
-To see all available options:
-```bash
-python3 SecPhoto.py --help
-```
-
-## 🔧 Command Line Options
+#### Command-Line Options:
 
 | Option | Description | Example |
-|--------|-------------|---------|
-| `-p`, `--proxy` | SOCKS5 proxy (IP:PORT) | `-p 127.0.0.1:9050` |
-| `--help` | Show help message | `--help` |
+|---|---|---|
+| `-p`, `--proxy IP:PORT` | Route traffic through a SOCKS5 proxy (e.g., Tor) | `python SecPhoto.py -p 127.0.0.1:9050` |
+| `-v`, `--version` | Display application version | `python SecPhoto.py --version` |
+| `-help`, `--help` | Show available options and help banner | `python SecPhoto.py --help` |
 
-## 📁 Dependencies
+---
 
-- `telethon` - Telegram client library
-- `colorama` - Colored terminal output
-- `pysocks` - SOCKS proxy support
+## 💡 How Interception Works
 
-## ⚡ Features
+1. **Automatic Monitoring**: When monitoring is active, SecPhoto listens for incoming messages containing self-destructing (TTL) photos or videos across all active chats.
+2. **Reply-to-Save Feature**: If you miss a disappearing message before it is captured, simply **reply to that message** in Telegram. SecPhoto will detect the reply, download the original media, and save it.
+3. **Saved Messages Delivery**: Intercepted media is automatically forwarded to your Telegram **"Saved Messages"** chat, complete with a structured caption including:
+   - Origin Chat ID
+   - Sender Username
+   - Message ID
+   - Exact Timestamp
 
-- ✅ Save self-destructing photos
-- ✅ Save self-destructing videos
-- ✅ **Reply-to-save feature** - Reply to any message to save its self-destructing media
-- ✅ Real-time monitoring of all chats
-- ✅ SOCKS5 proxy support
-- ✅ Works with both usernames and numeric IDs
-- ✅ Automatic delivery to Saved Messages
-- ✅ Cross-platform compatibility
+---
 
-## 🛡️ Security Notes
+## 🛡️ Privacy & Security
 
-- Keep your API credentials private and never share them
-- The tool creates a session file (`secret.session`) - keep this secure
-- Downloaded media is temporarily saved as `secret.jpg` or `secret.mp4`
+- **Zero Telemetry**: SecPhoto contains no remote telemetry, crash reporters, or analytics. Your activity is strictly between your machine and Telegram.
+- **Credential Protection**: Never share your API credentials, phone verification codes, or authorization data with anyone.
+- **Safe Operation**: SecPhoto operates non-intrusively. It does not alter, delete, or send unprompted messages in origin chats.
+
+---
 
 ## 🐛 Troubleshooting
 
-### "Please install dependencies" error
-Make sure you've installed all requirements:
+### "Please install dependencies"
+Ensure all required Python packages are installed:
 ```bash
 pip install -r requirements.txt
 ```
 
-### Authentication errors
-1. Verify your API credentials are correct
-2. Make sure you're using your own api_id and api_hash
-3. Delete the `secret.session` file and try again
+### Two-Factor Authentication (2FA) Prompt
+If your account has Two-Step Verification enabled, both the GUI and CLI will prompt you for your 2FA password during sign-in. Enter your account password to complete authentication.
 
-### Permission errors
-Make sure the script has write permissions in the current directory.
+### Network or Connection Timeouts
+If you are operating behind a restricted network or firewall:
+- In the **GUI**: Open **Settings** and enable the SOCKS5 proxy with your proxy host and port.
+- In the **CLI**: Pass the `-p` parameter (e.g., `python SecPhoto.py -p 127.0.0.1:9050`).
+
+---
 
 ## 📄 License
 
-This project is for educational purposes. Please respect Telegram's Terms of Service and use responsibly.
+This project is intended for personal and educational use. Please respect Telegram's Terms of Service and use responsibly.
+
+---
 
 ## 👨‍💻 Author
 
