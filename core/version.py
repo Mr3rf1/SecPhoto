@@ -9,8 +9,10 @@ import sys
 from typing import Tuple, Optional, NamedTuple
 
 # Canonical Application Identifiers & Version Constants
-__version__ = "1.0.0"
-VERSION_TUPLE: Tuple[int, int, int] = (1, 0, 0)
+__version__ = "1.0.1"
+VERSION_TUPLE: Tuple[int, int, int] = (1, 0, 1)
+VERSION: str = __version__  # Alias for compatibility
+BUILD_DATE: str = "2026-10-08"  # Updated with each build
 APP_NAME: str = "SecPhoto"
 APP_SUBTITLE: str = "Telegram Self-Destructive Media Interceptor"
 

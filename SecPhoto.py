@@ -6,7 +6,7 @@ api_hash = "82bd7b4562f7ju24d182bdc38huj9352"  # set your own api_key
 async def main():
     try:
         from telethon import TelegramClient, events
-        from telethon.errors import SessionPasswordNeededError
+        from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneCodeExpiredError
         from colorama import Fore
         from socks import SOCKS5
         from argparse import ArgumentParser
@@ -30,7 +30,7 @@ async def main():
         """Get phone number with validation for international format"""
         while True:
             phone = input(f" {Fore.YELLOW}[{Fore.GREEN}<{Fore.YELLOW}]{Fore.RESET} Enter your phone number (with country code, e.g., +1234567890): ").strip()
-            if re.match(r'^\+[1-9]\d{1,14}$', phone):
+            if re.match(r'^\+[1-9]\d{6,14}$', phone):
                 return phone
             else:
                 print(f" {Fore.YELLOW}[{Fore.RED}!{Fore.YELLOW}]{Fore.RESET} Invalid phone number format. Please use international format (e.g., +1234567890)")
@@ -64,6 +64,9 @@ async def main():
                 await client.sign_in(password=password)
                 print(f" {Fore.YELLOW}[{Fore.GREEN}!{Fore.YELLOW}]{Fore.RESET} Successfully authenticated with 2FA!")
                 return True
+            except (PhoneCodeInvalidError, PhoneCodeExpiredError) as e:
+                print(f" {Fore.YELLOW}[{Fore.RED}ERROR{Fore.YELLOW}]{Fore.RESET} Invalid or expired verification code: {str(e)}")
+                return False
         except Exception as e:
             print(f" {Fore.YELLOW}[{Fore.RED}ERROR{Fore.YELLOW}]{Fore.RESET} Authentication failed: {str(e)}")
             return False

@@ -473,7 +473,7 @@ class AuthView(QWidget):
 
     def _on_send_code_clicked(self):
         phone = self.input_phone.text().strip()
-        if not re.match(r'^\+[1-9]\d{1,14}$', phone):
+        if not re.match(r'^\+[1-9]\d{6,14}$', phone):
             self.login_status_lbl.setText("Invalid phone format. Use international format (e.g. +1234567890)")
             self.login_status_lbl.setStyleSheet("color: #f85149;")
             return
