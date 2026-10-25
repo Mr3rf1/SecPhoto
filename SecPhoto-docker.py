@@ -273,9 +273,16 @@ async def main():
         print(f"Command failed: {message}")
         await notify_command(message)
 
+    async def resolve_chat(chat_spec):
+        """Resolve a username, link or numeric chat ID given as command text."""
+        # Telethon parses numeric strings as phone numbers, so IDs must be ints
+        if re.fullmatch(r"-?\d+", chat_spec):
+            return await client.get_entity(int(chat_spec))
+        return await client.get_entity(chat_spec)
+
     async def create_or_sync_archive(chat_spec):
         async with archive_lock:
-            source = await client.get_entity(chat_spec)
+            source = await resolve_chat(chat_spec)
             source_id = get_peer_id(source)
             existing = archive_config()
             if existing and existing.get("source_id") == source_id:
@@ -308,9 +315,43 @@ async def main():
                 "New messages will be mirrored automatically."
             )
 
+    async def list_chats(name_filter):
+        """Send IDs and display names of all dialogs, optionally filtered by name."""
+        needle = name_filter.lower()
+        lines = []
+        async for dialog in client.iter_dialogs():
+            if needle and needle not in (dialog.name or "").lower():
+                continue
+            if dialog.is_channel and not dialog.is_group:
+                kind = "channel"
+            elif dialog.is_group:
+                kind = "group"
+            else:
+                kind = "user"
+            lines.append(f"{dialog.id} [{kind}] {dialog.name}")
+
+        if not lines:
+            await notify_command(f"No chats match '{name_filter}'." if name_filter else "No chats found.")
+            return
+
+        # Telegram caps messages at 4096 characters
+        chunk = f"{len(lines)} chat{'s' if len(lines) != 1 else ''}:"
+        for line in lines:
+            if len(chunk) + len(line) + 1 > 4000:
+                await notify_command(chunk)
+                chunk = line
+            else:
+                chunk += "\n" + line
+        await notify_command(chunk)
+
     async def handle_command(event):
         command = (event.raw_text or "").strip()
-        if command.startswith("/archive "):
+        if command == "/chats" or command.startswith("/chats "):
+            try:
+                await list_chats(command[len("/chats"):].strip())
+            except Exception as e:
+                await report_command_error(f"Listing chats failed: {str(e)}")
+        elif command.startswith("/archive "):
             try:
                 await create_or_sync_archive(command.split(None, 1)[1].strip())
             except Exception as e:
@@ -318,8 +359,8 @@ async def main():
         elif command.startswith("/archive-adopt "):
             try:
                 archive_spec, source_spec = command.split(None, 2)[1:]
-                source = await client.get_entity(source_spec)
-                archive_channel = await client.get_entity(archive_spec)
+                source = await resolve_chat(source_spec)
+                archive_channel = await resolve_chat(archive_spec)
                 latest_source = await client.get_messages(source, limit=1)
                 archive_state["archive"] = {
                     "source_id": get_peer_id(source),

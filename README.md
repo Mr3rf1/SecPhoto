@@ -111,9 +111,12 @@ The Docker version creates a private `SecPhoto Commands` channel on first startu
 /archive-adopt <archive-channel-id> <source-chat>
 /archive-status
 /archive-stop
+/chats [name filter]
 ```
 
 `/archive` creates a private channel, copies the source chat's existing messages in chronological order, and mirrors new messages afterward. If a source message is deleted, the archive retains the copy and adds a deletion notice. The command and archive channel IDs are stored in `/app/data/archive_state.json`, so restarts reuse them. Set `TG_COMMAND_CHANNEL_ID` when an existing private command channel should be used instead.
+
+`/chats` lists the ID, type and display name of every chat, group and channel the account is in. Add text after the command to show only chats whose display name contains it (case-insensitive), e.g. `/chats news`. The IDs can be used with `/archive` and `TG_EXCLUDED_USERS`.
 
 For an older archive channel created outside SecPhoto, use `/archive-adopt` with both channel IDs. Telegram does not expose the original source chat for an arbitrary channel, so the source must be supplied explicitly; the existing messages are retained and only future source messages are mirrored.
 
